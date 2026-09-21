@@ -1,0 +1,33 @@
+# --- 論文PDF（著作権物なので絶対にコミットしない） ---
+literature/pdf/*
+!literature/pdf/README.md
+*.pdf
+
+# --- 計測データ（サイズが大きい。必要なら別途バックアップ） ---
+data/raw/
+*.csv
+*.hdf5
+*.mat
+
+# --- OS / エディタ ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- Unity ---
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Ll]ogs/
+*.csproj
+*.sln
