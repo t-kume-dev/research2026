@@ -9,6 +9,9 @@ data/raw/
 *.hdf5
 *.mat
 
+# --- Office の一時ロックファイル（PowerPoint等を開いている間だけ生成される） ---
+~$*
+
 # --- OS / エディタ ---
 .DS_Store
 Thumbs.db
