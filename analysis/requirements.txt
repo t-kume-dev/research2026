@@ -1,0 +1,5 @@
+numpy
+scipy
+matplotlib
+# 実機（Delsys API）を使うときだけ必要
+pythonnet

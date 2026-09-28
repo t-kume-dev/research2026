@@ -28,9 +28,11 @@ literature/
   README.md     文献表（コミットする）
   notes/        論文ごとの読書メモ（コミットする）
   pdf/          論文PDF（.gitignore で除外。コミットしない）
+analysis/       Trigno からの EMG 取得と正規化（使い方は analysis/README.md）
+data/raw/       計測データ（.gitignore で除外）
 ```
 
-実装が始まったら `unity/`（タスク）、`firmware/`（M5StickC）、`analysis/`（信号処理・統計）を追加する。
+今後 `unity/`（タスク）、`firmware/`（M5StickC）を追加する。
 
 ## 運用メモ
 

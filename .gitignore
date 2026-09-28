@@ -8,6 +8,11 @@ data/raw/
 *.csv
 *.hdf5
 *.mat
+*.npz
+
+# --- Delsys API（配布物とライセンスはコミットしない） ---
+analysis/resources/
+analysis/delsys_license.json
 
 # --- Office の一時ロックファイル（PowerPoint等を開いている間だけ生成される） ---
 ~$*
