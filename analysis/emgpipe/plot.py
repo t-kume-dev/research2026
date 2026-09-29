@@ -6,9 +6,16 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import font_manager
 
 from . import processing as proc
 from .recording import Recording
+
+
+# チャネル名（sensors.json の部位名）が日本語でも表示できるよう、あるフォントを前に足す
+_JP_FONTS = ["Yu Gothic", "Meiryo", "MS Gothic", "Hiragino Sans", "Noto Sans CJK JP"]
+_installed = {f.name for f in font_manager.fontManager.ttflist}
+plt.rcParams["font.family"] = [f for f in _JP_FONTS if f in _installed] + ["DejaVu Sans"]
 
 
 def plot_file(path: Path, out: Path | None = None) -> None:
@@ -22,6 +29,7 @@ def plot_file(path: Path, out: Path | None = None) -> None:
             for c in (c for c in rec.channels if c.sensor == g and c.type.startswith("PCT")):
                 x = rec.data[c.name]
                 ax.plot(np.arange(x.size) / c.fs, x, lw=0.8, label=c.name.split(".")[-1])
+            ax.axhline(100, color="0.5", lw=0.8, ls="--")
             ax.set_ylabel(f"{g}\n%MVC")
             ax.legend(loc="upper right", fontsize=8)
         else:

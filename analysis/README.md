@@ -16,8 +16,16 @@ tests/            疑似信号でパイプライン全体を通すテスト
 ## 実機を使う前の準備
 
 1. `pip install -r requirements.txt`
+
+   Windows で `UnicodeDecodeError: 'cp932' codec can't decode ...` が出たら、UTF-8 モードで実行する
+   （`requirements.txt` の日本語コメントを cp932 で読もうとして失敗している）
+
+   ```powershell
+   $env:PYTHONUTF8 = "1"; pip install -r requirements.txt
+   ```
 2. Delsys の [Example-Applications](https://github.com/delsys-inc/Example-Applications) の
-   `Python/resources/DelsysAPI.dll` を `analysis/resources/DelsysAPI.dll` に置く
+   `Python/resources/` の中身を**全部** `analysis/resources/` に置く。
+   `DelsysAPI.dll` は `Signals.dll` などほかの DLL に依存しているため、単体では読み込めない
 3. Delsys 発行のキーとライセンスを `analysis/delsys_license.json` に書く
 
    ```json
@@ -52,6 +60,26 @@ python -m emgpipe plot ../data/raw/2026-10-01/aim_01_norm.npz
 作り直すには `python -m emgpipe recalib --session 2026-10-01`。
 
 テスト: `python -m unittest discover tests`
+
+## Trigno Discover の CSV から使う（API キーがないとき）
+
+Discover で記録して CSV に書き出し、1 つのフォルダ（例 `data/raw/2026-09-29/`）に入れる。
+ファイル名は `rest.csv`、`mvc_<課題>_<試行>.csv`（例 `mvc_wrist_extension_01.csv`）、それ以外は自由。
+同じフォルダに、部位とセンサ番号の対応表 `sensors.json` を置く。
+
+```json
+{"前腕の上（伸筋群）": 3, "前腕の下（屈筋群）": 0}
+```
+
+```powershell
+python -m emgpipe import-csv 2026-09-29        # *.csv → *.npz。マーカーの最初〜最後だけ切り出す
+python -m emgpipe recalib --session 2026-09-29 # rest.npz と mvc_*.npz から calibration.json
+python -m emgpipe normalize ../data/raw/2026-09-29/demo.npz
+python -m emgpipe plot ../data/raw/2026-09-29/demo_norm.npz
+```
+
+- 切り出したくないときは `import-csv --no-crop`
+- CSV の単位は mV（API は V）。キャリブレーションと正規化する記録は、同じ取り方のものを組み合わせる
 
 ## 正規化の定義
 

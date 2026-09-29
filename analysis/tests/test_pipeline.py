@@ -68,5 +68,50 @@ class PipelineTest(unittest.TestCase):
         self.assertLess(abs(r1), 2.0)
 
 
+def _write_discover_csv(path: Path, fs: float, x0: np.ndarray, x3: np.ndarray, markers: list[float]):
+    """Trigno Discover 2.1.0.7 と同じ形の CSV を書く（センサ 0 と 3、EMG 各 1 チャネル）。"""
+    head = [
+        "Application:, Trigno Discover (2.1.0.7)",
+        "Date/Time:, 2026/09/29 15:50:51",
+        f"Collection Length (seconds):, {x0.size / fs}",
+        "Avanti Sensor 0 (89542), , Avanti Sensor 3 (89563)",
+        "sensor mode: 40, , sensor mode: 40",
+        "EMG 1 Time Series (s), EMG 1 (mV), EMG 1 Time Series (s), EMG 1 (mV)",
+        f", {fs} Hz, , {fs} Hz",
+        f", {1 / fs} s, , {1 / fs} s, , Type, Name, Label, Time (s), , Pair",
+    ]
+    lines = []
+    for i in range(x0.size):
+        t = i / fs
+        row = f"{t}, {x0[i]}, {t}, {x3[i]}, "
+        if i < len(markers):
+            row += f", General, E{i + 1}, E{i + 1}, {markers[i]}, , "
+        lines.append(row)
+    path.write_text("\n".join(head + lines) + "\n", encoding="utf-8")
+
+
+class DiscoverCsvTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def test_read_crop_and_labels(self):
+        from emgpipe.discover_csv import import_dir
+        fs, n = 1000.0, 5000
+        rng = np.random.default_rng(0)
+        x0, x3 = 0.01 * rng.standard_normal(n), 0.02 * rng.standard_normal(n)
+        _write_discover_csv(self.tmp / "rest.csv", fs, x0, x3, [1.0, 4.0])
+        (self.tmp / "sensors.json").write_text('{"前腕の上（伸筋群）": 3, "前腕の下（屈筋群）": 0}', encoding="utf-8")
+
+        import_dir(self.tmp)
+        rec = Recording.load(self.tmp / "rest.npz")
+        self.assertEqual(rec.emg_names, ["前腕の下（屈筋群）", "前腕の上（伸筋群）"])
+        self.assertEqual(rec.fs("前腕の上（伸筋群）"), fs)
+        # 1.0〜4.0 秒だけが残る（両端を含むので 3001 サンプル）
+        up = rec.data["前腕の上（伸筋群）"]
+        self.assertEqual(up.size, 3001)
+        np.testing.assert_allclose(up, x3[1000:4001], rtol=1e-6)
+        self.assertEqual([m["name"] for m in rec.meta["markers"]], ["E1", "E2"])
+
+
 if __name__ == "__main__":
     unittest.main()

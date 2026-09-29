@@ -6,6 +6,7 @@
   recalib     記録済みのセッションから calibration.json を作り直す
   normalize   記録を calibration.json で正規化する
   plot        記録（生 / 正規化済み）を表示する
+  import-csv  Trigno Discover の CSV をまとめて .npz に変換する（API キーがないときの代わり）
 
 --source sim を付けると疑似信号で動く（既定は delsys = 実機）。
 """
@@ -85,6 +86,13 @@ def cmd_normalize(args):
     print(f"保存: {path}")
 
 
+def cmd_import_csv(args):
+    from .discover_csv import import_dir
+    out_dir = _session_dir(args.session)
+    saved = import_dir(out_dir, crop=not args.no_crop)
+    print(f"{len(saved)} ファイルを変換: {out_dir}")
+
+
 def cmd_plot(args):
     from .plot import plot_file
     plot_file(Path(args.file), out=Path(args.out) if args.out else None)
@@ -124,6 +132,11 @@ def main(argv=None):
     n.add_argument("file")
     n.add_argument("--calib", help="既定は同じディレクトリの calibration.json")
     n.set_defaults(func=cmd_normalize)
+
+    ic = sub.add_parser("import-csv")
+    ic.add_argument("session", help="CSV が入ったフォルダ（セッション名かパス）")
+    ic.add_argument("--no-crop", action="store_true", help="マーカー区間で切り出さず、全体を残す")
+    ic.set_defaults(func=cmd_import_csv)
 
     pl = sub.add_parser("plot")
     pl.add_argument("file")
