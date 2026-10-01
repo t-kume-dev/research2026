@@ -1,5 +1,11 @@
 # CLAUDE.md
 
+## Git：「最新にして」は pull のこと
+
+「Git を最新にして」「更新して」と言われたら、今のフォルダで `git pull` する。
+clone し直す、フォルダを消す、`git clean -fdx` はしない。`literature/pdf/` の論文 PDF や
+`data/raw/` の計測データは Git の管理外なので、消えると戻せない。
+
 ## 進捗報告：目標とストーリーを守る
 
 毎週木曜に進捗報告がある。成果報告（`docs/progress/<日付>.md`）もスライドも、同じ流れで書く。
