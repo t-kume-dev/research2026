@@ -15,7 +15,9 @@
 
 from __future__ import annotations
 
+import csv
 import json
+import re
 import time
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
@@ -31,6 +33,17 @@ MVC_TASKS = {
     "wrist_extension": "手首の伸展（手の甲を上に反らす）。手の甲を押さえてもらい、全力で押し返す",
     "wrist_flexion": "手首の屈曲（手のひら側に曲げる）。手のひらを押さえてもらい、全力で押し返す",
     "grip": "グリップ。握力計かタオルを全力で握る",
+    # 伸展の MVC の取り方を比べる候補（docs/lab/mvc_trial.md、literature/notes/MVC_protocols.md）
+    "ext_self": "【前回のやり方】手のひら下・握る。反対の手で手の甲を押さえ、全力で反らす",
+    "ext_fist_pron": "手のひら下・握る。手の甲を押さえてもらい、全力で反らす",
+    "ext_fist_neut": "親指が上・握る。手の甲を押さえてもらい、全力で反らす（Forman 2019 の ECR）",
+    "ext_ulnar_neut": "親指が上・握る。手の甲の小指側を押さえてもらい、反らしながら小指側へ（Forman 2019 の ECU）",
+    "ext_open_neut": "親指が上・手を半分開き、相手に手を包んでもらう。反らしながら全力で手を開く（Forman 2019 の ED）",
+    "ext_radial_pron": "手のひら下・握る。手の甲の親指側を押さえてもらい、反らしながら親指側へ（Lacelle 2025 の ECR）",
+    "ext_open_pron": "手のひら下・手を開く。指の付け根より先を押さえてもらい、全力で反らす（Lacelle 2025 の ED）",
+    "ext_fixed_solo": "【一人用】手のひら下・握る。机の天板の裏に手の甲を当て、全力で押し上げる。反対の手は机の上",
+    "flex_fist_sup": "手のひら上・握る。手のひらを押さえてもらい、全力で曲げる（Forman 2019 の FCR）",
+    "flex_grip_sup": "手のひら上・相手の手を握る。全力で握りながら曲げる（Forman 2019 の FDS）",
 }
 DEFAULT_TASKS = ("wrist_extension", "wrist_flexion")
 
@@ -102,14 +115,81 @@ def compute_calibration(rest_rec: Recording, mvc_recs: dict[str, Recording]) -> 
         warns)
 
 
+def _load_mvc_recs(session_dir: Path) -> dict[str, Recording]:
+    recs = {p.stem.removeprefix("mvc_"): Recording.load(p)
+            for p in sorted(Path(session_dir).glob("mvc_*.npz")) if not p.stem.endswith("_norm")}
+    if not recs:
+        raise FileNotFoundError(f"{session_dir} に mvc_*.npz がありません")
+    return recs
+
+
 def calibration_from_dir(session_dir: Path) -> Calibration:
     session_dir = Path(session_dir)
     rest_rec = Recording.load(session_dir / "rest.npz")
-    mvc_recs = {p.stem.removeprefix("mvc_"): Recording.load(p)
-                for p in sorted(session_dir.glob("mvc_*.npz"))}
-    if not mvc_recs:
-        raise FileNotFoundError(f"{session_dir} に mvc_*.npz がありません")
-    return compute_calibration(rest_rec, mvc_recs)
+    return compute_calibration(rest_rec, _load_mvc_recs(session_dir))
+
+
+# ---------------------------------------------------------------------------
+# MVC の取り方の比較（どの課題がいちばん大きいか、確認動作が何 %MVC になるか）
+# ---------------------------------------------------------------------------
+
+def compare_tasks(session_dir: Path) -> list[dict]:
+    """課題ごとの MVC と、確認動作（check_*.npz）のピークがその MVC の何 % かを並べる。
+
+    課題名は試行ラベルの末尾の番号を除いたもの（"ext_fist_pron_01" → "ext_fist_pron"）。
+    最後に「全課題」の行を付ける。これが今のコード（recalib）の MVC になる。
+    """
+    session_dir = Path(session_dir)
+    mvc_recs = _load_mvc_recs(session_dir)
+    checks = {p.stem: Recording.load(p) for p in sorted(session_dir.glob("check_*.npz"))
+              if not p.stem.endswith("_norm")}
+    names = next(iter(mvc_recs.values())).emg_names
+    rows = []
+    for name in names:
+        by_task: dict[str, list[float]] = {}
+        for label, rec in mvc_recs.items():
+            if name in rec.data:
+                by_task.setdefault(re.sub(r"_\d+$", "", label), []).append(mvc_level(rec, name))
+        check_peak, check_from = -np.inf, ""
+        for label, rec in checks.items():
+            if name in rec.data and (v := mvc_level(rec, name)) > check_peak:
+                check_peak, check_from = v, label
+        best = max(max(v) for v in by_task.values())
+        entries = sorted(by_task.items(), key=lambda kv: -max(kv[1])) + [("全課題", [best])]
+        for task, vals in entries:
+            m = max(vals)
+            rows.append({
+                "channel": name, "task": task, "trials": vals, "mvc": m,
+                "pct_of_best": m / best * 100,
+                "check_pct_mvc": check_peak / m * 100 if checks else None,
+                "check_from": check_from,
+            })
+    return rows
+
+
+def print_comparison(rows: list[dict]) -> None:
+    for name in dict.fromkeys(r["channel"] for r in rows):
+        sub = [r for r in rows if r["channel"] == name]
+        print(f"\n{name}")
+        if sub[0]["check_from"]:
+            print(f"  確認動作のピーク: {sub[0]['check_from']}")
+        print(f"  {'課題':<18}{'MVC':>10}{'最大比':>8}{'確認動作':>10}   試行ごと")
+        for r in sub:
+            chk = f"{r['check_pct_mvc']:7.0f} %" if r["check_pct_mvc"] is not None else "       -"
+            trials = ", ".join(f"{v:.3g}" for v in r["trials"])
+            print(f"  {r['task']:<18}{r['mvc']:>10.3g}{r['pct_of_best']:>7.0f}%{chk:>10}   {trials}")
+    print("\n最大比: その課題の MVC ÷ 全課題の最大。確認動作: 確認動作のピーク ÷ その課題の MVC（100% 以下なら足りている）")
+
+
+def save_comparison(rows: list[dict], path: Path) -> Path:
+    with open(path, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["channel", "task", "mvc", "pct_of_best", "check_pct_mvc", "check_from", "trials"])
+        for r in rows:
+            w.writerow([r["channel"], r["task"], f"{r['mvc']:.6g}", f"{r['pct_of_best']:.1f}",
+                        "" if r["check_pct_mvc"] is None else f"{r['check_pct_mvc']:.1f}",
+                        r["check_from"], " ".join(f"{v:.6g}" for v in r["trials"])])
+    return Path(path)
 
 
 # ---------------------------------------------------------------------------

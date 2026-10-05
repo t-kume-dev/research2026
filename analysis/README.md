@@ -78,6 +78,13 @@ python -m emgpipe normalize ../data/raw/2026-09-29/demo.npz
 python -m emgpipe plot ../data/raw/2026-09-29/demo_norm.npz
 ```
 
+MVC の取り方を比べるとき（手順は `docs/lab/mvc_trial.md`）は、`mvc_<課題>_<試行>.csv` に加えて
+確認動作を `check_<名前>.csv` で書き出し、`import-csv` のあとに次を実行する。
+
+```powershell
+python -m emgpipe mvc-compare --session 2026-10-xx  # 課題ごとの MVC と、確認動作が何 %MVC か。mvc_compare.csv にも保存
+```
+
 - 切り出したくないときは `import-csv --no-crop`
 - CSV の単位は mV（API は V）。キャリブレーションと正規化する記録は、同じ取り方のものを組み合わせる
 

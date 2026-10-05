@@ -4,6 +4,7 @@
   record      自由記録（練習中など）
   calibrate   安静参照 + MVC の手順を実行し、calibration.json を作る
   recalib     記録済みのセッションから calibration.json を作り直す
+  mvc-compare MVC の課題ごとの大きさと、確認動作（check_*）が何 %MVC になるかを比べる
   normalize   記録を calibration.json で正規化する
   plot        記録（生 / 正規化済み）を表示する
   import-csv  Trigno Discover の CSV をまとめて .npz に変換する（API キーがないときの代わり）
@@ -17,8 +18,8 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-from .calibration import (ProtocolConfig, Calibration, calibration_from_dir, normalize,
-                          print_calibration, run_protocol)
+from .calibration import (ProtocolConfig, Calibration, calibration_from_dir, compare_tasks, normalize,
+                          print_calibration, print_comparison, run_protocol, save_comparison)
 from .recording import Recording, record
 from .sources import make_source
 
@@ -77,6 +78,13 @@ def cmd_recalib(args):
     print_calibration(calib)
 
 
+def cmd_mvc_compare(args):
+    out_dir = _session_dir(args.session)
+    rows = compare_tasks(out_dir)
+    print_comparison(rows)
+    print(f"保存: {save_comparison(rows, out_dir / 'mvc_compare.csv')}")
+
+
 def cmd_normalize(args):
     src_path = Path(args.file)
     calib_path = Path(args.calib) if args.calib else src_path.parent / "calibration.json"
@@ -127,6 +135,10 @@ def main(argv=None):
     rc = sub.add_parser("recalib")
     rc.add_argument("--session", required=True)
     rc.set_defaults(func=cmd_recalib)
+
+    mc = sub.add_parser("mvc-compare")
+    mc.add_argument("--session", required=True)
+    mc.set_defaults(func=cmd_mvc_compare)
 
     n = sub.add_parser("normalize")
     n.add_argument("file")

@@ -119,3 +119,4 @@
 - MVC の課題一覧：`analysis/emgpipe/calibration.py` の `MVC_TASKS`（今は伸展・屈曲・グリップ）
 - 測定の手順（案内つき）：同じファイルの `ProtocolConfig`（安静 10 秒、5 秒 × 3、試行間 60 秒）
 - 研究室での手順書：`docs/handoff.md` の 4 章
+- 「後で試すこと」を 1 回で比べる手順：`docs/lab/mvc_trial.md`。比較は `python -m emgpipe mvc-compare --session <日付>`

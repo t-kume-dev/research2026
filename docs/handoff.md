@@ -13,7 +13,7 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
    ```
 3. Delsys の DLL を置く：[Example-Applications](https://github.com/delsys-inc/Example-Applications) の
    `Python/resources/` の中身を**全部** `analysis/resources/` に（約 13 MB。`.gitignore` 済み）
-4. 確認：`analysis/` で `python -m unittest discover tests` が 4 件とも通る
+4. 確認：`analysis/` で `python -m unittest discover tests` が 5 件とも通る
 
 ## 2. Git に入っていないもの
 
@@ -38,9 +38,9 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 | 状態 | やること | メモ |
 | --- | --- | --- |
 | 返事待ち | Delsys API のキーとライセンス | 問い合わせメールを先生に渡した。届いたら `analysis/delsys_license.json` に書き、Trigno Discover を閉じて `python -m emgpipe devices` |
-| 次に研究室で | 伸展の MVC を取り直す | 反対の手で押さえるやり方だと出し切れず、デモで伸筋側が約 350 %MVC になった。机の天板の裏に手の甲を当てて押し上げる など、しっかり固定できる方法で取る。それでも 100% を超える動きが残れば、その動きを MVC の課題に足す |
+| 次に研究室で | 伸展の MVC を取り直す | 反対の手で押さえるやり方だと出し切れず、デモで伸筋側が約 350 %MVC になった。文献の取り方を全部 1 回で比べる手順を `docs/lab/mvc_trial.md` にまとめた（手伝う人 1 人、約 25 分）。記録後は `mvc-compare` で比べる |
 | 次に研究室で | 6 か所に付けて本番データを取る | 手順は 4 章。MVC を固めてから |
-| 未着手 | コードの MVC 課題一覧を 6 課題に増やす | `analysis/emgpipe/calibration.py` の `MVC_TASKS` は手首の伸展・屈曲とグリップだけ。CSV で進めるあいだは、ファイル名に課題名が入っていれば動くので困らない。API で `calibrate` を使うときに必要 |
+| 未着手 | コードの MVC 課題一覧を 6 課題に増やす | `analysis/emgpipe/calibration.py` の `MVC_TASKS` は、手首の伸展・屈曲・グリップと、伸展の MVC を比べる候補（`mvc_trial.md`）だけ。肩・肘の課題はまだない。CSV で進めるあいだは、ファイル名に課題名が入っていれば動くので困らない。API で `calibrate` を使うときに必要 |
 | 未確認 | デモの 41 秒の屈筋側の振れ | 反らしきった手首を戻した瞬間に約 100 %MVC。戻す動きの筋活動か、手が机に当たったノイズか |
 | 未着手 | エイム課題のイベント記録 | 「静止区間の残余活動」を出すには、待機中・クリック直前などの区間が要る。マウスのクリック・位置の時刻ログを取り、EMG と時刻を合わせる仕組みを作る。Aim Lab を使う場合、Discover のマーカーは 1 本（1 タスク）ごとに始まりと終わりの 2 つ |
 | 検討中 | 前腕の小指側にセンサを足すか | マウスを左右に振る動き（橈屈・尺屈）のうち、小指側は今の上下 2 か所では弱く映る可能性。波形を見てから決める |

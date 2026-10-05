@@ -67,6 +67,26 @@ class PipelineTest(unittest.TestCase):
         r1 = np.median(rest.data["S1_EMG1.pct_mvc_rest"][2000:-2000])
         self.assertLess(abs(r1), 2.0)
 
+    def test_compare_tasks(self):
+        from emgpipe.calibration import compare_tasks, save_comparison
+        src = FastSim()
+        cfg = ProtocolConfig(rest_s=4, trials=2, contraction_s=3, rest_between_s=0, countdown_s=0)
+        run_protocol(src, self.tmp, cfg, interactive=False)
+        # 確認動作として、伸展の 1 試行目をそのまま check_ にする → 伸展に対して 100% 以下
+        Recording.load(self.tmp / "mvc_wrist_extension_1.npz").save(self.tmp / "check_free_extension_01.npz")
+
+        rows = compare_tasks(self.tmp)
+        s1 = [r for r in rows if r["channel"] == "S1_EMG1"]
+        self.assertEqual(s1[0]["task"], "wrist_extension")
+        self.assertEqual(len(s1[0]["trials"]), 2)
+        self.assertEqual(s1[-1]["task"], "全課題")
+        self.assertAlmostEqual(s1[-1]["mvc"], s1[0]["mvc"])
+        self.assertLessEqual(s1[0]["check_pct_mvc"], 100.0 + 1e-9)
+        # 屈曲は伸筋側にとって小さい MVC なので、同じ確認動作が 100% を超える
+        flex = next(r for r in s1 if r["task"] == "wrist_flexion")
+        self.assertGreater(flex["check_pct_mvc"], 100.0)
+        self.assertTrue(save_comparison(rows, self.tmp / "mvc_compare.csv").exists())
+
 
 def _write_discover_csv(path: Path, fs: float, x0: np.ndarray, x3: np.ndarray, markers: list[float]):
     """Trigno Discover 2.1.0.7 と同じ形の CSV を書く（センサ 0 と 3、EMG 各 1 チャネル）。"""
