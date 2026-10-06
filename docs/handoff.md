@@ -1,4 +1,4 @@
-# 引き継ぎメモ（2026-09-29 時点）
+# 引き継ぎメモ（2026-10-06 時点）
 
 PC を移るときに、Git に入っていないものと、やりかけのことをまとめたもの。
 状況が変わったら書き換え、不要になったら消す。
@@ -20,17 +20,21 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 | もの | 場所 | 移し方 |
 | --- | --- | --- |
 | 09-29 のデモデータ | `data/raw/2026-09-29/` | **手で持っていく**（USB かクラウド、約 34 MB） |
+| 10-06 の MVC 比較データ | `data/raw/2026-10-06/` | **手で持っていく**（約 105 MB）。CSV 13 個、`sensors.json`、`notes.txt` |
 | Delsys の DLL | `analysis/resources/` | 1-3 のとおり取り直せばよい |
 | API のキーとライセンス | `analysis/delsys_license.json` | まだない（届いたらここに書く） |
 | 問い合わせメールの下書き | `_local/delsys_inquiry.md` | 先生に渡し済みなので不要 |
 
-- デモデータで必要なのは **CSV 4 つと `sensors.json`** だけ。`.npz` と `calibration.json` は次で作り直せる
+- どちらの日も、必要なのは **CSV と `sensors.json`（と `notes.txt`）** だけ。`.npz`・`calibration.json`・`mvc_compare.csv` は次で作り直せる
 
   ```powershell
   python -m emgpipe import-csv 2026-09-29
   python -m emgpipe recalib --session 2026-09-29
   python -m emgpipe normalize ../data/raw/2026-09-29/demo.npz
+  python -m emgpipe import-csv 2026-10-06
+  python -m emgpipe mvc-compare --session 2026-10-06
   ```
+- 10-06 のセンサは 09-29 と逆（センサ 0 = 伸筋側、3 = 屈筋側）。記録中に上下がわからなくなり、課題ごとの反応から決めた。理由は `notes.txt`
 - `_local/` は `.git/info/exclude` で除外していた。新しい PC で同じ使い方をするなら、そこに `_local/` を 1 行足す
 
 ## 3. やりかけのこと
@@ -38,7 +42,9 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 | 状態 | やること | メモ |
 | --- | --- | --- |
 | 返事待ち | Delsys API のキーとライセンス | 問い合わせメールを先生に渡した。届いたら `analysis/delsys_license.json` に書き、Trigno Discover を閉じて `python -m emgpipe devices` |
-| 次に研究室で | 伸展の MVC を取り直す | 反対の手で押さえるやり方だと出し切れず、デモで伸筋側が約 350 %MVC になった。文献の取り方を全部 1 回で比べる手順を `docs/lab/mvc_trial.md` にまとめた（手伝う人 1 人、約 25 分）。記録後は `mvc-compare` で比べる |
+| 確認 | 研究室の PC に一人用（H）の記録が残っていないか | 10-06 に取ったはずだが CSV がない（E と F のあいだが 3.5 分空いている）。Trigno Discover に残っていれば CSV に書き出し、`data/raw/2026-10-06/mvc_ext_fixed_solo_01.csv` として入れて `import-csv` → `mvc-compare` |
+| 次に研究室で | MVC の取り直し | 10-06 の結果（`docs/progress/2026-10-08.md`）：伸展は B（`ext_fist_pron`）で確認動作 56 %MVC に収まった。屈曲は確認動作が 416 %MVC で足りない。取り直すのは B と H を 2 回ずつ、屈曲の課題、最後に確認動作。記録の前にセンサ番号と位置を `sensors.json` に書き、反らしてどちらが伸筋側か確かめる。1 試行ごとに CSV が書き出せたかその場で見る |
+| 未着手 | 屈曲の MVC を決める | 曲げきる動きを屈曲の課題に加えるか、取り方を見直す。決まったら `calibration.py` の `DEFAULT_TASKS` と 4 章の表を差し替える（`mvc_trial.md` の「決め方」5） |
 | 次に研究室で | 6 か所に付けて本番データを取る | 手順は 4 章。MVC を固めてから |
 | 未着手 | コードの MVC 課題一覧を 6 課題に増やす | `analysis/emgpipe/calibration.py` の `MVC_TASKS` は、手首の伸展・屈曲・グリップと、伸展の MVC を比べる候補（`mvc_trial.md`）だけ。肩・肘の課題はまだない。CSV で進めるあいだは、ファイル名に課題名が入っていれば動くので困らない。API で `calibrate` を使うときに必要 |
 | 未確認 | デモの 41 秒の屈筋側の振れ | 反らしきった手首を戻した瞬間に約 100 %MVC。戻す動きの筋活動か、手が机に当たったノイズか |
