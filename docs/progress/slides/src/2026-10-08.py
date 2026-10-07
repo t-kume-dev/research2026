@@ -114,6 +114,17 @@ D 以降の課題は腕を机から浮かせて取りました。浮かせる取
 
 来週は、伸展・屈曲の MVC を確かめて、6 か所で本番データを取ります。
 """,
+    "refs_own": """\n（予備）手持ちの 13 本です。右の列は、MVC をどう扱っていたかです。
+
+筋ごとの手順まで書いてあったのは Lacelle だけで、G. N. Forman の 3 本は手順を別の論文に任せていました。Wang は「解剖ガイド（Perotto 2011）に従った」とだけ書いています。残りの 8 本は MVC を使っていません（別の正規化か、EMG を測っていない）。
+""",
+    "refs_traced": """\n（予備）手順を任せていた論文の引用をたどって読んだものです。Forman 2025 → Forman 2020
+Sci Rep→ Forman 2019 の Table 1、の順にたどりました。
+
+Forman 2019 は有料でしたが、著者 D. A. Forman の博論（2020、公開）の 3 章が同じ論文で、表 3.1 に同じ表があります。
+
+Forman は 2 人います。G. N. Forman（Brock University）と D. A. Forman（博論は Ontario Tech University）です。
+""",
 }
 
 
@@ -389,5 +400,69 @@ box(s, 1032, 560, 440, 56, fill=PALE_BLUE, radius=28, anchor=MSO_ANCHOR.MIDDLE,
     paras=[P("伸展は B に決定", 30, True, NAVY, align=PP_ALIGN.CENTER)])
 bullets(s, 1032, 640, 760, 150, ["屈曲は次回確かめる", "一人で取れるかも残った"], size=36, gap=10)
 takeaway(s, "来週：MVC を確かめて、6 か所で本番データを取る")
+
+
+# 12〜13 予備：読んだ文献
+def ref_table(s, y0, rows, rh, with_mvc=True):
+    cols = [(116, 330, "著者"), (452, 80, "年"), (540, 1000 if with_mvc else 1252, "タイトル")]
+    if with_mvc:
+        cols.append((1556, 236, "MVC の扱い"))
+    for x, w, head in cols:
+        textbox(s, x, y0 - 44, w, 36, [P(head, 22, True, GRAY)])
+    for i, row in enumerate(rows):
+        y = y0 + i * rh
+        line(s, 116, y, 1792, y, "DDDDDD", 1.5)
+        dim = with_mvc and row[3] in ("MVC なし", "EMG なし")
+        for (x, w, _), v in zip(cols, row):
+            textbox(s, x, y, w - 12, rh, [P(v, 20, color=GRAY if dim else INK, spacing=1.05)],
+                    anchor=MSO_ANCHOR.MIDDLE)
+    line(s, 116, y0 + len(rows) * rh, 1792, y0 + len(rows) * rh, "DDDDDD", 1.5)
+
+
+s = deck.slide(NOTES["refs_own"])
+title(s, "予備：読んだ文献（手持ちの 13 本）", 12)
+ref_table(s, 250, [
+    ("Lacelle", "2025", "Vertical computer mice and gaming: effect of mouse orientation on muscle activation "
+                        "and performance（修士論文）", "筋ごとの手順"),
+    ("Forman, G. N.", "2023", "On the Physical Demands of Gaming: Quantifying Pain, Muscle Activity, Kinematics, "
+                              "and Performance Changes（博士論文）", "別の論文へ"),
+    ("Forman, G. N. ほか", "2025", "Impact of repetitive mouse aiming on muscle fatigue and fine motor performance "
+                                  "of the distal upper limb", "別の論文へ"),
+    ("Forman, G. N. ほか", "2025", "Quantifying the Physical Demands of Tactical First-Person Shooter Gameplay: "
+                                  "Muscle Activity and Movement Characteristics During Competitive Valorant",
+     "別の論文へ"),
+    ("Wang ほか", "2023", "The effects of mouse weight and connection type on performance, muscle activity, "
+                         "and preferences among professional gamers", "解剖ガイドのみ"),
+    ("Park ほか", "2021", "Secrets of Gosu: Understanding Physical Combat Skills of Professional Players in "
+                         "First-Person Shooters", "MVC なし"),
+    ("Prajapati ほか", "2024", "Relating Muscle Activity and Mouse Sensitivity in FPS Game Players Using Surface "
+                              "EMG Signals", "MVC なし"),
+    ("Kuikkaniemi ほか", "2010", "The influence of implicit and explicit biofeedback in first-person shooter games",
+     "MVC なし"),
+    ("Okinaka & Wada", "2023", "Evaluation of performance of key hits using input data, electromyography, and "
+                              "video analysis", "MVC なし"),
+    ("Jeong ほか", "2024", "e スポーツプレイヤーのパフォーマンスと筋活動の相関関係について", "MVC なし"),
+    ("Donovan & Heeger", "2022", "Assessment of human expertise and movement kinematics in first-person shooter "
+                                "games", "EMG なし"),
+    ("Dupuy ほか", "2024", "On the necessity for biomechanics research in esports", "EMG なし"),
+    ("Dupuy ほか", "2025", "Differentiating right upper limb movements of esports players who play different "
+                          "game genres", "EMG なし"),
+], 60)
+
+s = deck.slide(NOTES["refs_traced"])
+title(s, "予備：引用をたどって読んだ文献", 13)
+ref_table(s, 290, [
+    ("Forman, D. A. ほか", "2019", "The influence of simultaneous handgrip and wrist force on forearm muscle "
+                                  "activity"),
+    ("Forman, D. A.", "2020", "Muscle fatigue and other factors influencing forearm muscle activity"
+                              "（博士論文。3 章が Forman 2019）"),
+    ("Forman, G. N. ほか", "2020", "Investigating the Muscular and Kinematic Responses to Sudden Wrist "
+                                  "Perturbations During a Dynamic Tracking Task\nSci Rep"),
+    ("Forman, D. A. ほか", "2020", "Sustained Isometric Wrist Flexion and Extension Maximal Voluntary Contractions "
+                                  "Similarly Impair Hand-Tracking Accuracy in Young Adults Using a Wrist Robot"
+                                  "\nFront Sports Act Living"),
+    ("Holmes ほか", "2022", "The effects of isometric hand grip force on wrist kinematics and forearm muscle "
+                           "activity during radial and ulnar wrist joint perturbations\nPeerJ"),
+], 90, with_mvc=False)
 
 deck.save(SLIDES_DIR / "2026-10-08.pptx")
