@@ -5,6 +5,7 @@
 
 必要なもの: python-pptx（lxml は一緒に入る）
 """
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -86,6 +87,21 @@ def export_pdf(pptx: Path):
         print("PDF の書き出しに失敗:", r.stderr.strip())
         return
     print("saved", pdf, "（パスをクリップボードにコピーした）")
+    start_otp_watch()
+
+
+# OneNote の検証コードを 10 分だけ待ち受けるスクリプト（研究とは別に置いている。なければ何もしない）
+OTP_WATCH = Path.home() / "Documents/develop/ms-otp/otp_watch.py"
+
+
+def start_otp_watch():
+    if not OTP_WATCH.exists():
+        return
+    log = open(OTP_WATCH.with_name("otp_watch.log"), "a", encoding="utf-8")
+    flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    subprocess.Popen([sys.executable, str(OTP_WATCH)], stdout=log, stderr=log, creationflags=flags,
+                     env={**os.environ, "PYTHONUTF8": "1"})
+    print("検証コードを 10 分だけ待ち受ける（OneNote を開いてよい）")
 
 
 def _set_font(run, size, bold=False, color=INK):
