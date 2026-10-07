@@ -24,15 +24,27 @@ NOTES = {
 
 2 つ目は研究室での比較です。10-06 に、前腕 2 か所（伸筋側・屈筋側）にセンサを付け、手伝ってくれる人 1 人と記録しました。9 つの課題を 1 回ずつ（前回のやり方 A だけ 2 回）と、確認動作（手首を自由に反らしきる・曲げきる）を 1 回ずつ取りました。比べるのは mvc-compare というコマンドで、確認動作がそれぞれの課題の MVC の何 % になるかを出します。
 """,
-    "tasks": """\n10-06 に試した動作の一覧です。
+    "tasks_base": """\n10-06 に試した動作です。3 枚に分けて見せます。図は模式図で、手のひら下・手のひら上は横から、親指が上は上から見ています。
 
-最初に確認動作を取りました。誰も押さえずに、手首を反らしきる・曲げきる動きで、疲れる前の最大を見るためのものです。
+まず確認動作。誰も押さえずに、手首を自由に反らしきる動きです。09-29 のデモで 350 %MVC になったのと同じ動きで、疲れる前の最大を見るため、記録の最初に取りました。
 
-伸展は 8 つです。A は前回までのやり方で、自分の反対の手で押さえます。B〜G は手伝う人に抵抗をかけてもらうやり方で、文献の課題（Forman 2019、Lacelle 2025）から選びました。前腕の向き（手のひら下・親指が上）、握るか開くか、小指側・親指側にも押すかを変えています。H は一人でできる方法で、机の天板の裏を押し上げます。
+A は前回までのやり方で、握って、自分の反対の手で手の甲を押さえて反らします。比べるための基準として 2 回取りました。
 
-屈曲は 2 つで、どちらも手のひら上です。I は握って曲げる、J は手伝う人の指を握りながら曲げます。
+B は、同じ姿勢で、手伝う人に手の甲を上から押さえてもらいます。A と B は押さえる人だけが違うので、差を見れば「他の人に押さえてもらう」効果がわかる、という組み方です。ここまでの 3 つは腕を机に乗せて取りました。
+""",
+    "tasks_ext": """\n伸展のほかの候補です。文献の課題（Forman 2019、Lacelle 2025）から選びました。
 
-試行は 1 回ずつ（A だけ 2 回）です。D 以降は腕を机から浮かせて取りました。H は CSV を書き出しそこねたので、結果がありません。
+上の段は親指が上（Forman 2019）。C は握って手の甲側へ押す（ECR、橈側手根伸筋）、D はそれに小指側（机の方向）も加える（ECU、尺側手根伸筋）、E は手伝う人に両手で包んでもらい、手を開きながら反らす（ED、総指伸筋）。
+
+下の段は手のひら下。F は反らしながら親指側にも押す（Lacelle の ECR）、G は指を伸ばしたまま反らす（Lacelle の ED）、H は一人でできる方法として、机の天板の裏に手の甲を当てて押し上げる。
+
+D 以降は腕を机から浮かせて取りました。H は CSV を書き出しそこねたので、結果がありません。試行は 1 回ずつです。
+""",
+    "tasks_flex": """\n屈曲です。
+
+確認動作は、誰も押さえずに手のひら側に曲げきる動きです。手首から先を机の端から出して取りました。
+
+課題は 2 つで、どちらも手のひら上（Forman 2019）。I は握って、こぶしを上から押さえてもらい、手のひら側に曲げる。J は手伝う人の指 2〜3 本を全力で握りながら曲げる。どちらも腕を机から浮かせて取りました。
 """,
     "lit": """\n文献から言えることは 2 つです。
 
@@ -140,13 +152,70 @@ def pct_bars(s, rows, y0, rh, scale, x0=700, color=BLUE):
     textbox(s, x100 - 100, y0 - 64, 200, 40, [P("100 %", 26, True, align=PP_ALIGN.CENTER)])
 
 
-def task_card(s, x, y, w, h, key, pose, act, col, pale, hot=False, floated=False, note=None):
+SKIN, SKIN_LINE, DESK, RESIST = "F1E3D6", "8A7A6C", "DDDDDD", "A6A6A6"
+
+
+def motion(s, ox, oy, k, view, hand="fist", act="push", resist=None, rlabel="", float_=False, col=BLUE,
+           extra=None):
+    """動作の模式図。基準の大きさ 500×220 を k 倍して (ox, oy) に置く。
+    view="side" は横から、"top" は上から（親指が上の向き）。
+    act は push（固定して押す）、bend_up / bend_down（自由に反らす・曲げる）。"""
+    def X(v): return ox + v * k
+    def Y(v): return oy + v * k
+    def L(v): return v * k
+    fy = 80 if float_ else 120          # 前腕の上端
+    if view == "side":
+        box(s, X(0), Y(170), L(300), L(50), fill=DESK)
+        textbox(s, X(8), Y(176), L(200), L(40), [P("机", 20, color=GRAY)])
+        if float_:
+            textbox(s, X(70), Y(134), L(230), L(34), [P("↕ 浮かせた", 20, True, GRAY)])
+    else:
+        box(s, X(0), Y(0), L(500), L(220), fill="F4F4F4")
+        textbox(s, X(8), Y(186), L(400), L(34), [P("机（上から見た図）", 18, color=GRAY)])
+        fy = 95
+    box(s, X(20), Y(fy), L(282), L(50), fill=SKIN, line=SKIN_LINE, line_w=2, radius=12)
+    if hand == "open":
+        hx, hy, hw, hh = 296, fy + 8, 150, 34
+    else:
+        hx, hy, hw, hh = 296, fy - 5, 72, 60
+    if act == "push":
+        box(s, X(hx), Y(hy), L(hw), L(hh), fill=SKIN, line=SKIN_LINE, line_w=2, radius=14)
+        cx = hx + hw / 2
+        ax = min(hx + hw + 26, 470)
+        line(s, X(ax), Y(fy + 20), X(ax), Y(fy - 60), col, 7, head="end")
+        if extra:
+            textbox(s, X(ax - 290), Y(fy + 52), L(320), L(40), [P(extra, 19, True, col, spacing=1.1,
+                                                                   align=PP_ALIGN.RIGHT)])
+        if resist == "desk":
+            box(s, X(230), Y(hy - 26), L(200), L(22), fill=SKIN_LINE)
+            textbox(s, X(100), Y(hy - 34), L(125), L(30), [P("天板の裏", 19, True, GRAY, align=PP_ALIGN.RIGHT)])
+        elif resist:
+            box(s, X(cx - 40), Y(hy - 24), L(80), L(22), fill=RESIST, radius=6)
+            line(s, X(cx), Y(hy - 80), X(cx), Y(hy - 28), RESIST, 6, head="end")
+            textbox(s, X(cx - 220), Y(hy - 76), L(205), L(34),
+                    [P(rlabel, 19, True, GRAY, align=PP_ALIGN.RIGHT)])
+    else:
+        up = act == "bend_up"
+        hs = box(s, X(hx - 6), Y(fy - 38 if up else fy + 28), L(hw), L(hh), fill=SKIN, line=SKIN_LINE,
+                 line_w=2, radius=14)
+        hs.rotation = -50 if up else 50
+        if up:
+            line(s, X(440), Y(fy + 10), X(440), Y(fy - 70), col, 7, head="end")
+        else:
+            line(s, X(440), Y(fy + 30), X(440), Y(fy + 100), col, 7, head="end")
+        textbox(s, X(330), Y(fy + 60 if up else fy - 40), L(170), L(34), [P("誰も押さえない", 19, True, col)])
+
+
+def motion_card(s, x, y, w, h, key, pose, cap, col, pale, k, hot=False, tags=(), **kw):
     box(s, x, y, w, h, fill=pale if hot else "FFFFFF", line=col if hot else RULE, line_w=4 if hot else 2,
-        radius=10, pad=(12, 10, 12, 12), paras=[
-            P(key, 30, True, col, after=2), P(pose, 21, color=GRAY, after=4), P(act, 22, True, spacing=1.2)])
-    tags = [t for t in ("腕を浮かせた" if floated else None, note) if t]
-    for i, t in enumerate(tags):
-        textbox(s, x + 12, y + h - 34 - 28 * (len(tags) - 1 - i), w - 22, 28, [P(t, 19, color=GRAY)])
+        radius=12)
+    textbox(s, x + 20, y + 14, w - 40, 50, [dict(runs=[(key + "　", 32, True, col), (pose, 24, True, GRAY)])])
+    iw = 500 * k
+    motion(s, x + (w - iw) / 2, y + 66, k, col=col, **kw)
+    textbox(s, x + 20, y + 66 + 220 * k + 10, w - 40, 80, [P(cap, 26, True, spacing=1.25)])
+    if tags:
+        textbox(s, x + 20, y + h - 40, w - 40, 30, [P("　".join(tags), 20, True, ORANGE_TXT)])
+
 
 
 deck = Deck(SLIDES_DIR / "2026-10-01.pptx")
@@ -188,41 +257,57 @@ for i, (lab, body, hot) in enumerate(rows):
 line(s, 116, y0 + 4 * rh, 1792, y0 + 4 * rh, "DDDDDD", 1.5)
 takeaway(s, "自分の手で押さえるやり方は、どの文献にもない", ORANGE_TXT)
 
-# 4 試した動作
-s = deck.slide(NOTES["tasks"])
-title(s, "試した動作（10-06）", 4)
-bullets(s, 120, 220, 1672, 70, ["伸展 8 つ・屈曲 2 つを 1 回ずつ（A だけ 2 回）。最初に確認動作"], size=40)
-cw, gap = 195, 16
-textbox(s, 116, 310, 1676, 40, [P("確認動作（誰も押さえない・最初に取った）", 26, True, GRAY)])
-for i, (k, act, col) in enumerate([("伸展", "手首を反らしきる", BLUE), ("屈曲", "手首を曲げきる", ORANGE_TXT)]):
-    box(s, 116 + i * (4 * cw + 4 * gap), 352, 4 * cw + 3 * gap, 64, line=RULE, radius=10,
-        anchor=MSO_ANCHOR.MIDDLE, pad=(0, 16, 0, 16), paras=[dict(runs=[
-            (k + "　", 26, True, col), (act, 26, True, INK)])])
-textbox(s, 116, 436, 600, 40, [P("伸展", 26, True, BLUE)])
-ext = [("A", "手のひら下", "自分の手で\n押さえる", False, None),
-       ("B", "手のひら下", "握って上から\n押さえて\nもらう", False, None),
-       ("C", "親指が上", "握って\n手の甲側へ", False, None),
-       ("D", "親指が上", "握って\n＋小指側", True, None),
-       ("E", "親指が上", "手を開き\nながら反らす", True, None),
-       ("F", "手のひら下", "握って\n＋親指側", True, None),
-       ("G", "手のひら下", "指を伸ばして\n反らす", True, None),
-       ("H", "手のひら下", "一人で天板の\n裏を押す", True, "CSV なし")]
-for i, (k, pose, act, fl, note) in enumerate(ext):
-    task_card(s, 116 + i * (cw + gap), 478, cw, 250, k, pose, act, BLUE, PALE_BLUE, hot=k == "B",
-              floated=fl, note=note)
-textbox(s, 116, 748, 600, 40, [P("屈曲", 26, True, ORANGE_TXT)])
-flex = [("I", "手のひら上", "握って曲げる"), ("J", "手のひら上", "相手の指を握って曲げる")]
-for i, (k, pose, act) in enumerate(flex):
-    task_card(s, 116 + i * (2 * cw + 2 * gap), 790, 2 * cw + gap, 170, k, pose, act, ORANGE_TXT, PALE_ORANGE,
-              floated=True)
-textbox(s, 116 + 4 * (cw + gap), 790, 4 * cw + 3 * gap, 170, [
-    P("抵抗は H 以外、手伝う人がかけた", 24, color=GRAY, spacing=1.4),
-    P("B〜G は文献の課題（Forman 2019、Lacelle 2025）", 24, color=GRAY, spacing=1.4)],
-    anchor=MSO_ANCHOR.MIDDLE)
+# 4〜6 試した動作
+s = deck.slide(NOTES["tasks_base"])
+title(s, "試した動作：確認動作と A・B", 4)
+bullets(s, 120, 230, 1672, 150, ["確認動作は誰も押さえない。疲れる前の最初に取った",
+                                 "A と B は、押さえる人だけが違う"], size=40, gap=10)
+cw, ch, cy = 540, 450, 400
+cards = [("確認", "手のひら下", "手首を自由に反らしきる", dict(view="side", hand="open", act="bend_up"), False),
+         ("A", "手のひら下・握る", "自分の反対の手で押さえる\n（前回までのやり方）",
+          dict(view="side", resist="self", rlabel="自分の手"), False),
+         ("B", "手のひら下・握る", "他の人に上から押さえてもらう",
+          dict(view="side", resist="other", rlabel="他の人"), True)]
+for i, (key, pose, cap, kw, hot) in enumerate(cards):
+    motion_card(s, 116 + i * (cw + 28), cy, cw, ch, key, pose, cap, BLUE, PALE_BLUE, 0.96, hot=hot, **kw)
 
-# 5 どう比べたか
+s = deck.slide(NOTES["tasks_ext"])
+title(s, "試した動作：伸展のほかの候補", 5)
+bullets(s, 120, 220, 1672, 70, ["文献の課題から、前腕の向き・握る／開く・横方向を変えた"], size=40)
+ch = 360
+cards = [("C", "親指が上・握る", "手の甲側へ押す", dict(view="top", resist="other", rlabel="他の人"), ()),
+         ("D", "親指が上・握る", "手の甲側＋小指側",
+          dict(view="top", resist="other", rlabel="他の人", extra="＋小指側（机へ）", float_=True), ("腕を浮かせた",)),
+         ("E", "親指が上・開く", "包まれた手を開きながら反らす",
+          dict(view="top", hand="open", resist="other", rlabel="両手で包む", float_=True), ("腕を浮かせた",)),
+         ("F", "手のひら下・握る", "反らす＋親指側",
+          dict(view="side", resist="other", rlabel="他の人", extra="＋親指側", float_=True), ("腕を浮かせた",)),
+         ("G", "手のひら下・開く", "指を伸ばしたまま反らす",
+          dict(view="side", hand="open", resist="other", rlabel="他の人", float_=True), ("腕を浮かせた",)),
+         ("H", "手のひら下・握る", "一人で、天板の裏を押し上げる",
+          dict(view="side", resist="desk", float_=True), ("腕を浮かせた", "CSV なし"))]
+for i, (key, pose, cap, kw, tags) in enumerate(cards):
+    r, c = divmod(i, 3)
+    motion_card(s, 116 + c * (cw + 28), 300 + r * (ch + 20), cw, ch, key, pose, cap, BLUE, PALE_BLUE, 0.62,
+                tags=tags, **kw)
+
+s = deck.slide(NOTES["tasks_flex"])
+title(s, "試した動作：屈曲", 6)
+bullets(s, 120, 230, 1672, 150, ["確認動作は、手首から先を机の端から出して曲げきる",
+                                 "課題は手のひら上の 2 つ。どちらも腕を浮かせた"], size=40, gap=10)
+ch = 450
+cards = [("確認", "手のひら下", "手首を自由に曲げきる", dict(view="side", hand="open", act="bend_down"), ()),
+         ("I", "手のひら上・握る", "こぶしを押さえてもらい\n手のひら側へ曲げる",
+          dict(view="side", resist="other", rlabel="他の人", float_=True), ("腕を浮かせた",)),
+         ("J", "手のひら上", "相手の指を握りながら\n手のひら側へ曲げる",
+          dict(view="side", resist="other", rlabel="他の人", float_=True), ("腕を浮かせた",))]
+for i, (key, pose, cap, kw, tags) in enumerate(cards):
+    motion_card(s, 116 + i * (cw + 28), cy, cw, ch, key, pose, cap, ORANGE_TXT, PALE_ORANGE, 0.96, tags=tags,
+                **kw)
+
+# 7 どう比べたか
 s = deck.slide(NOTES["method"])
-title(s, "どう比べたか", 5)
+title(s, "どう比べたか", 7)
 bullets(s, 120, 250, 1672, 170, ["確認動作 ＝ 誰も押さえず、手首を反らしきる（疲れる前の最初に取る）",
                                  "確認動作 ÷ 課題の MVC が 100% 以下なら、全力を出し切れている"], size=40, gap=16)
 textbox(s, 116, 500, 500, 90, [P("課題の MVC", 34, True)], anchor=MSO_ANCHOR.MIDDLE)
@@ -236,9 +321,9 @@ box(s, 640, 723, 900, 64, fill=PALE_GRAY, line=GRAY, dash=True, radius=4)
 textbox(s, 1560, 710, 232, 90, [P("超える\n→ 足りない", 24, True, ORANGE_TXT)], anchor=MSO_ANCHOR.MIDDLE)
 line(s, 1340, 490, 1340, 800, INK, 3, dash=True)
 
-# 6 伸展の結果
+# 8 伸展の結果
 s = deck.slide(NOTES["ext"])
-title(s, "伸展：B で足りた", 6)
+title(s, "伸展：B で足りた", 8)
 bullets(s, 120, 250, 1672, 170, ["腕を机に乗せ、上から押さえてもらう（B）で 56 %MVC",
                                  "確認動作は疲れる前に取った　→　疲れがあっても結論は同じ"], size=42, gap=16)
 textbox(s, 116, 450, 1676, 40, [P("伸筋側：確認動作は MVC の何 %か", 28, True, GRAY)])
@@ -249,9 +334,9 @@ textbox(s, 1100, 450, 692, 40, [P("A が日で違う理由は未確定（セン�
                                   align=PP_ALIGN.RIGHT)])
 takeaway(s, "伸展の MVC は B に決める", BLUE)
 
-# 7 足りなかったこと
+# 9 足りなかったこと
 s = deck.slide(NOTES["short"])
-title(s, "足りなかったこと", 7)
+title(s, "足りなかったこと", 9)
 bullets(s, 120, 250, 1672, 260, ["屈曲は、確認動作が 416 %MVC で足りない",
                                  "続けて取ったので、ほかの課題の差は疲れと分けられない",
                                  "D 以降（屈曲の I・J も）は腕を浮かせた　→　うまくいかなそう"], size=42, gap=12)
@@ -259,9 +344,9 @@ textbox(s, 116, 560, 1676, 40, [P("屈筋側：確認動作は MVC の何 %か",
 pct_bars(s, [("J　相手の手を握る", "屈曲で一番大きい課題", 416, True)], 660, 100, 2.4, color=ORANGE)
 takeaway(s, "腕を浮かせず、休みをとって取り直す", ORANGE_TXT)
 
-# 8 次やること
+# 10 次やること
 s = deck.slide(NOTES["next"])
-title(s, "次やること", 8)
+title(s, "次やること", 10)
 bullets(s, 120, 250, 1672, 80, ["腕は机に乗せる。疲れる前と後に確認動作を取る"])
 box(s, 116, 370, 820, 170, fill=PALE_BLUE, line=BLUE, line_w=3, radius=12, anchor=MSO_ANCHOR.MIDDLE,
     pad=(24, 32, 24, 32), paras=[P("伸展（決定）", 28, True, BLUE, after=8),
@@ -274,9 +359,9 @@ flow(s, 650, [("1 最初", "確認動作", False), ("2", "B・H\n2 回ずつ", T
               ("4 最後", "確認動作\n＋ B", False)], w=370, gap=65, h=160)
 textbox(s, 116, 850, 1676, 50, [P("記録の前に、センサの番号と位置を sensors.json に書く", 30, color=GRAY)])
 
-# 9 まとめ
+# 11 まとめ
 s = deck.slide(NOTES["summary"])
-title(s, "まとめ", 9)
+title(s, "まとめ", 11)
 goal_boxes(s, 250)
 box(s, 116, 560, 440, 56, fill=PALE_GRAY, radius=28, anchor=MSO_ANCHOR.MIDDLE,
     paras=[P("前腕 2 か所で新しく取った", 30, True, GRAY, align=PP_ALIGN.CENTER)])
