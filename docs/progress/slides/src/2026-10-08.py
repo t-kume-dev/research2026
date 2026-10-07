@@ -114,6 +114,19 @@ D 以降の課題は腕を机から浮かせて取りました。浮かせる取
 
 来週は、伸展・屈曲の MVC を確かめて、6 か所で本番データを取ります。
 """,
+    "all_results": """\n（予備）全課題の結果です。確認動作のピークが、それぞれの課題の MVC の何 % になったかを、小さい順に並べています。100% 以下なら、その課題で全力を出し切れています。
+
+伸筋側で 100% 以下に収まったのは B（56%）と A（96%）だけでした。屈筋側はどの課題も 400% 以上で、足りていません。
+
+ただし、課題を続けて取ったので、後に取った課題ほど疲れて MVC が小さく出た（%MVC が大きく出た）可能性があります。D 以降は腕を浮かせて取っています。なので、B 以外の課題が「だめだった」とは言い切れません。H は CSV を書き出しそこねたので、結果がありません。
+
+伸筋側に I・J（屈曲の課題）が入っているのは、屈曲の課題でも伸筋側が働いていて、その大きさで割ったときの値です。
+
+【数値（包絡線、mV）】
+伸筋側：B 0.154（最大比 100%、確認動作 56%）、A 0.090（59%、96%）、F 0.080（52%、108%）、J 0.075（49%、116%）、E 0.066（43%、132%）、G 0.054（35%、160%）、C 0.051（33%、169%）、I 0.051（33%、170%）、D 0.044（28%、198%）
+屈筋側：J 0.025（100%、416%）、D 0.018（74%、566%）、I 0.018（73%、568%）
+最大比は、その課題の MVC ÷ 全課題の最大です。
+""",
     "refs_own": """\n（予備）手持ちの 13 本です。右の列は、MVC をどう扱っていたかです。
 
 筋ごとの手順まで書いてあったのは Lacelle だけで、G. N. Forman の 3 本は手順を別の論文に任せていました。Wang は「解剖ガイド（Perotto 2011）に従った」とだけ書いています。残りの 8 本は MVC を使っていません（別の正規化か、EMG を測っていない）。
@@ -402,7 +415,44 @@ bullets(s, 1032, 640, 760, 150, ["屈曲は次回確かめる", "一人で取れ
 takeaway(s, "来週：MVC を確かめて、6 か所で本番データを取る")
 
 
-# 12〜13 予備：読んだ文献
+# 12 予備：全課題の結果
+def result_rows(s, rows, y0, rh, scale, col, pale_col, x0=760):
+    """課題ごとの %MVC の横棒（小さい順）。rows は (記号, 説明, 値, 腕を浮かせたか)。"""
+    for i, (k, desc, v, fl) in enumerate(rows):
+        y = y0 + i * rh
+        textbox(s, 116, y, 60, rh, [P(k, 28, True, col)], anchor=MSO_ANCHOR.MIDDLE)
+        textbox(s, 170, y, 440, rh, [P(desc, 22)], anchor=MSO_ANCHOR.MIDDLE)
+        if fl:
+            textbox(s, 600, y, 150, rh, [P("腕を浮かせた", 18, color=GRAY)], anchor=MSO_ANCHOR.MIDDLE)
+        w = v * scale
+        box(s, x0, y + rh / 2 - 15, w, 30, fill=col if v <= 100 else pale_col, radius=3)
+        x100 = x0 + 100 * scale
+        textbox(s, max(x0 + w, x100 + 4) + 12, y, 160, rh, [P(f"{v} %", 24, True)], anchor=MSO_ANCHOR.MIDDLE)
+    line(s, x100, y0 - 6, x100, y0 + len(rows) * rh + 6, INK, 2.5, dash=True)
+    textbox(s, x100 - 80, y0 - 40, 160, 32, [P("100 %", 20, True, align=PP_ALIGN.CENTER)])
+
+
+s = deck.slide(NOTES["all_results"])
+title(s, "予備：全課題の結果", 12)
+textbox(s, 116, 200, 1676, 40, [P("確認動作は、その課題の MVC の何 %か（小さい順）。H は CSV なし", 26, True, GRAY)])
+textbox(s, 116, 262, 600, 40, [P("伸筋側", 28, True, BLUE)])
+result_rows(s, [("B", "手のひら下・上から押さえてもらう", 56, False),
+                ("A", "手のひら下・自分の手で押さえる", 96, False),
+                ("F", "手のひら下・反らす＋親指側", 108, True),
+                ("J", "手のひら上・相手の指を握って曲げる", 116, True),
+                ("E", "親指が上・開きながら反らす", 132, True),
+                ("G", "手のひら下・指を伸ばして反らす", 160, True),
+                ("C", "親指が上・握って手の甲側へ", 169, False),
+                ("I", "手のひら上・握って曲げる", 170, True),
+                ("D", "親指が上・手の甲側＋小指側", 198, True)], 310, 52, 3.6, BLUE, "9DB8D3")
+textbox(s, 116, 790, 600, 40, [dict(runs=[("屈筋側", 28, True, ORANGE_TXT),
+                                          ("　棒の縮尺は伸筋側の約半分", 20, False, GRAY)])])
+result_rows(s, [("J", "手のひら上・相手の指を握って曲げる", 416, True),
+                ("D", "親指が上・手の甲側＋小指側", 566, True),
+                ("I", "手のひら上・握って曲げる", 568, True)], 838, 52, 1.5, ORANGE_TXT, "F2C39A")
+textbox(s, 116, 1000, 1676, 40, [P("続けて取ったので、後の課題ほど疲れで %MVC が大きく出た可能性がある", 22, color=GRAY)])
+
+# 13〜14 予備：読んだ文献
 def ref_table(s, y0, rows, rh, with_mvc=True):
     cols = [(116, 330, "著者"), (452, 80, "年"), (540, 1000 if with_mvc else 1252, "タイトル")]
     if with_mvc:
@@ -420,7 +470,7 @@ def ref_table(s, y0, rows, rh, with_mvc=True):
 
 
 s = deck.slide(NOTES["refs_own"])
-title(s, "予備：読んだ文献（手持ちの 13 本）", 12)
+title(s, "予備：読んだ文献（手持ちの 13 本）", 13)
 ref_table(s, 250, [
     ("Lacelle", "2025", "Vertical computer mice and gaming: effect of mouse orientation on muscle activation "
                         "and performance（修士論文）", "筋ごとの手順"),
@@ -450,7 +500,7 @@ ref_table(s, 250, [
 ], 60)
 
 s = deck.slide(NOTES["refs_traced"])
-title(s, "予備：引用をたどって読んだ文献", 13)
+title(s, "予備：引用をたどって読んだ文献", 14)
 ref_table(s, 290, [
     ("Forman, D. A. ほか", "2019", "The influence of simultaneous handgrip and wrist force on forearm muscle "
                                   "activity"),
