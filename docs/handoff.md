@@ -25,7 +25,7 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 | API のキーとライセンス | `analysis/delsys_license.json` | 届いた。ここに書く（PC を移るときは手で持っていく） |
 | 問い合わせメールの下書き | `_local/delsys_inquiry.md` | 先生に渡し済みなので不要 |
 | 進捗スライドの PDF | `docs/progress/slides/pdf/` | 不要。スライドのスクリプトを実行すれば作り直せる |
-| OneNote の検証コード自動入力 | `~/Documents/develop/ms-otp/`（このリポジトリの外） | **フォルダごと手で持っていく**。準備は中の `README.md`（下の注も） |
+| OneNote の検証コード自動入力 | `~/Documents/develop/ms-otp/`（このリポジトリの外） | **持っていかない**。今の PC だけで使う。ほかの PC では検証コードを手で入れる |
 | Claude にプッシュを許す設定 | `.claude/settings.local.json` | `.git/info/exclude` で除外。新しい PC では作り直す（`Bash(git push)` を許可） |
 
 - どちらの日も、必要なのは **CSV と `sensors.json`（と `notes.txt`）** だけ。`.npz`・`calibration.json`・`mvc_compare.csv` は次で作り直せる
@@ -39,11 +39,7 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
   ```
 - 10-06 のセンサは 09-29 と逆（センサ 0 = 伸筋側、3 = 屈筋側）。記録中に上下がわからなくなり、課題ごとの反応から決めた。理由は `notes.txt`
 - `_local/` は `.git/info/exclude` で除外していた。新しい PC で同じ使い方をするなら、そこに `_local/` を 1 行足す
-- OneNote の検証コード自動入力（ms-otp）は、フォルダのほかに PC ごとの準備がいる
-  - Gmail のアプリパスワードを Windows の資格情報マネージャーに入れ直す（`keyring`、サービス名 `ms-otp`）
-  - Chrome に Tampermonkey を入れ、`ms-otp.user.js` を貼る。「ユーザー スクリプトを許可する」をオンにし、サイトへのアクセスは SharePoint・Microsoft のサインイン画面・`127.0.0.1` だけに絞る
-  - Gmail のフィルタ（検証コードのメールに `msotp` ラベル、迷惑メールにしない）は Gmail 側にあるので、そのまま使える
-  - スライドのスクリプト（`pptx_kit.py`）は、このフォルダがあれば PDF のあとに 10 分だけ自動で起動する
+- スライドのスクリプト（`pptx_kit.py`）は、ms-otp のフォルダがある PC でだけ、PDF のあとに検証コードの待ち受けを起動する。ない PC では何もしないので、そのまま使える
 
 ## 3. やりかけのこと
 
