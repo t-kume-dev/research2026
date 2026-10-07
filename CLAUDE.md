@@ -56,6 +56,10 @@ clone し直す、フォルダを消す、`git clean -fdx` はしない。`liter
 python docs/progress/slides/src/<日付>.py
 ```
 
+Windows では PDF も `docs/progress/slides/pdf/` に書き出され（Git の管理外）、そのフルパスが
+クリップボードに入る。研究室の OneNote（Web 版）には「挿入 → 印刷イメージ」でファイル名の欄に
+貼り付けて入れる。
+
 ### 話す内容はノートに書く
 
 スライドには結論だけを置き、話す内容はすべてスピーカーノートに書く。

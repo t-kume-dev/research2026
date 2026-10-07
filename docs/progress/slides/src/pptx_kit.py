@@ -5,6 +5,8 @@
 
 必要なもの: python-pptx（lxml は一緒に入る）
 """
+import subprocess
+import sys
 from pathlib import Path
 
 from lxml import etree
@@ -62,6 +64,28 @@ class Deck:
     def save(self, out: Path):
         self.prs.save(str(out))
         print("saved", out, len(self.prs.slides), "slides")
+        export_pdf(out)
+
+
+def export_pdf(pptx: Path):
+    """PowerPoint で PDF に書き出し、そのフルパスをクリップボードに入れる（Windows のみ）。
+
+    OneNote の「挿入 → 印刷イメージ」でファイル名の欄に貼り付ければ、そのまま選べる。
+    PowerPoint がない環境では何もしない。
+    """
+    if sys.platform != "win32":
+        return
+    pdf = SLIDES_DIR / "pdf" / (pptx.stem + ".pdf")
+    pdf.parent.mkdir(exist_ok=True)
+    ps = (f"$pp = New-Object -ComObject PowerPoint.Application; "
+          f"$p = $pp.Presentations.Open('{pptx.resolve()}', $true, $false, $false); "
+          f"$p.SaveAs('{pdf.resolve()}', 32); $p.Close(); $pp.Quit(); "
+          f"Set-Clipboard -Value '{pdf.resolve()}'")
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True)
+    if r.returncode != 0:
+        print("PDF の書き出しに失敗:", r.stderr.strip())
+        return
+    print("saved", pdf, "（パスをクリップボードにコピーした）")
 
 
 def _set_font(run, size, bold=False, color=INK):

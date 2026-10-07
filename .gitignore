@@ -14,6 +14,9 @@ data/raw/
 analysis/resources/
 analysis/delsys_license.json
 
+# --- 進捗スライドの PDF・画像（pptx から作り直せる。OneNote に貼る用） ---
+docs/progress/slides/pdf/
+
 # --- Office の一時ロックファイル（PowerPoint等を開いている間だけ生成される） ---
 ~$*
 
