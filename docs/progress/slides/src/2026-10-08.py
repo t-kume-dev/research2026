@@ -152,7 +152,7 @@ def pct_bars(s, rows, y0, rh, scale, x0=700, color=BLUE):
     textbox(s, x100 - 100, y0 - 64, 200, 40, [P("100 %", 26, True, align=PP_ALIGN.CENTER)])
 
 
-SKIN, SKIN_LINE, DESK, RESIST = "F1E3D6", "8A7A6C", "DDDDDD", "A6A6A6"
+SKIN, SKIN_LINE, DESK, RESIST, THUMB = "F1E3D6", "8A7A6C", "DDDDDD", "A6A6A6", "E2C8B0"
 
 
 def motion(s, ox, oy, k, view, hand="fist", act="push", resist=None, rlabel="", float_=False, col=BLUE,
@@ -173,18 +173,37 @@ def motion(s, ox, oy, k, view, hand="fist", act="push", resist=None, rlabel="", 
         box(s, X(0), Y(0), L(500), L(220), fill="F4F4F4")
         textbox(s, X(8), Y(186), L(400), L(34), [P("机（上から見た図）", 18, color=GRAY)])
         fy = 95
-    box(s, X(20), Y(fy), L(282), L(50), fill=SKIN, line=SKIN_LINE, line_w=2, radius=12)
-    if hand == "open":
+    top = view == "top"
+    box(s, X(20), Y(fy), L(250 if top else 282), L(50), fill=SKIN, line=SKIN_LINE, line_w=2, radius=12)
+    if top:  # 親指が上を上から見る：手を大きめに描き、親指が手の上に乗って見えるようにする
+        hx, hy, hw, hh = (262, fy - 4, 180, 58) if hand == "open" else (262, fy - 22, 104, 94)
+    elif hand == "open":
         hx, hy, hw, hh = 296, fy + 8, 150, 34
     else:
         hx, hy, hw, hh = 296, fy - 5, 72, 60
     if act == "push":
         box(s, X(hx), Y(hy), L(hw), L(hh), fill=SKIN, line=SKIN_LINE, line_w=2, radius=14)
+        if top:
+            if hand == "open":   # 伸ばした指の境目と、指に沿って伸びた親指
+                for f in (0.3, 0.5, 0.7):
+                    line(s, X(hx + 100), Y(hy + hh * f), X(hx + hw - 10), Y(hy + hh * f), SKIN_LINE, 1.5)
+                tx, ty, tw, th = hx + 8, hy + 14, 100, 26
+            else:                # 握った指の節と、上に乗った親指
+                for dx in (72, 83, 94):
+                    line(s, X(hx + dx), Y(hy + 8), X(hx + dx), Y(hy + 36), SKIN_LINE, 1.5)
+                tx, ty, tw, th = hx + 8, hy + 42, 78, 28
+            box(s, X(tx), Y(ty), L(tw), L(th), fill=THUMB, line=SKIN_LINE, line_w=2, radius=13)
+            box(s, X(tx + tw - 22), Y(ty + 5), L(16), L(th - 10), fill="FFF7EF", line=SKIN_LINE, line_w=1,
+                radius=4)
+            textbox(s, X(hx - 72), Y(fy + 54), L(66), L(30), [P("親指", 19, True, SKIN_LINE, align=PP_ALIGN.RIGHT)])
+            line(s, X(hx - 4), Y(fy + 66), X(tx + 14), Y(ty + th / 2), SKIN_LINE, 1.5)
+            textbox(s, X(24), Y(fy - 34), L(180), L(30), [P("手の甲側", 18, True, GRAY)])
+            textbox(s, X(24), Y(fy + 54), L(180), L(30), [P("手のひら側", 18, True, GRAY)])
         cx = hx + hw / 2
         ax = min(hx + hw + 26, 470)
         line(s, X(ax), Y(fy + 20), X(ax), Y(fy - 60), col, 7, head="end")
         if extra:
-            textbox(s, X(ax - 290), Y(fy + 52), L(320), L(40), [P(extra, 19, True, col, spacing=1.1,
+            textbox(s, X(ax - 290), Y(fy + (88 if top else 52)), L(320), L(40), [P(extra, 19, True, col, spacing=1.1,
                                                                    align=PP_ALIGN.RIGHT)])
         if resist == "desk":
             box(s, X(230), Y(hy - 26), L(200), L(22), fill=SKIN_LINE)
@@ -288,7 +307,7 @@ cards = [("C", "親指が上・握る", "手の甲側へ押す", dict(view="top"
           dict(view="side", resist="desk", float_=True), ("腕を浮かせた", "CSV なし"))]
 for i, (key, pose, cap, kw, tags) in enumerate(cards):
     r, c = divmod(i, 3)
-    motion_card(s, 116 + c * (cw + 28), 300 + r * (ch + 20), cw, ch, key, pose, cap, BLUE, PALE_BLUE, 0.62,
+    motion_card(s, 116 + c * (cw + 28), 300 + r * (ch + 20), cw, ch, key, pose, cap, BLUE, PALE_BLUE, 0.9,
                 tags=tags, **kw)
 
 s = deck.slide(NOTES["tasks_flex"])
