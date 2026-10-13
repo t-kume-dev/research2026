@@ -1,4 +1,4 @@
-# 引き継ぎメモ（2026-10-07 時点）
+# 引き継ぎメモ（2026-10-13 時点）
 
 PC を移るときに、Git に入っていないものと、やりかけのことをまとめたもの。
 状況が変わったら書き換え、不要になったら消す。
@@ -22,7 +22,8 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 | 09-29 のデモデータ | `data/raw/2026-09-29/` | **手で持っていく**（USB かクラウド、約 34 MB） |
 | 10-06 の MVC 比較データ | `data/raw/2026-10-06/` | **手で持っていく**（約 105 MB）。CSV 13 個、`sensors.json`、`notes.txt` |
 | Delsys の DLL | `analysis/resources/` | 1-3 のとおり取り直せばよい |
-| API のキーとライセンス | `analysis/delsys_license.json` | 届いた。ここに書く（PC を移るときは手で持っていく） |
+| API のキーとライセンス | `analysis/DelsysAPI.key`、`analysis/DelsysAPI.lic` | **手で持っていく**。届いたファイルをそのまま `analysis/` に置けば読む（`analysis/*.key`・`*.lic` は `.gitignore` 済み）。中身はチャットや Git に出さない |
+| 10-13 の API の試し取り | `data/raw/2026-10-13/` | 要らなければ持っていかなくてよい。`.npz` 4 個と `calib_test/`。中身は `docs/progress/2026-10-15.md` の補足メモ |
 | 問い合わせメールの下書き | `_local/delsys_inquiry.md` | 先生に渡し済みなので不要 |
 | 進捗スライドの PDF | `docs/progress/slides/pdf/` | 不要。スライドのスクリプトを実行すれば作り直せる |
 | OneNote の検証コード自動入力 | `~/Documents/develop/ms-otp/`（このリポジトリの外） | **持っていかない**。今の PC だけで使う。ほかの PC では検証コードを手で入れる |
@@ -45,11 +46,11 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 
 | 状態 | やること | メモ |
 | --- | --- | --- |
-| 次に | API へ移行する | キーとライセンスが届いた。`analysis/delsys_license.json` に書き、Trigno Discover を閉じて `python -m emgpipe devices` で実機につながるか確かめる。Discover と同じ設定（Avanti、2148.1 Hz）で取れるかも見る |
+| 一部済み | API へ移行する | 10-13 に、自分の PC で接続・記録・2 本同時・`calibrate` の繰り返しまで確かめた（`docs/progress/2026-10-15.md`）。残り：6 本同時、数分の長い記録（`--live` の窓は記録全体をつなぎ直すので、長いと重くなるかも）、`calibrate` でも `--live` の窓を出す、`--session` に相対パスを渡すと `data/data/raw/...` に保存される件。基地局の USB は、ふだん研究室の PC に挿さっているので、使う PC に挿し替える |
 | 未着手 | 再現性を高めるためにすることを考える | 同じやり方（A）でも、09-29 は確認動作が約 350 %MVC、10-06 は 96% と日によって大きく違った。センサの位置、押さえ方、確認動作のやり方などが候補 |
 | 次に研究室で | ほかの箇所の MVC を始める | 肩・上腕・僧帽筋。課題が多く時間がかかりそうなので、前腕の MVC と並行して早めに始める。課題の案は 4 章の表 |
 | 確認 | 研究室の PC に一人用（H）の記録が残っていないか | 10-06 に取ったはずだが CSV がない（E と F のあいだが 3.5 分空いている）。Trigno Discover に残っていれば CSV に書き出し、`data/raw/2026-10-06/mvc_ext_fixed_solo_01.csv` として入れて `import-csv` → `mvc-compare` |
-| 次に研究室で | MVC を確かめる | 伸展は B（腕を机に乗せ、手のひら下・握って上から押さえてもらう）、屈曲は腕を机に乗せて机に向かって押し下げる。順番は、確認動作（最初）→ 伸展（B）→ 屈曲。課題のあいだは十分休む。記録の前に `sensors.json` を書き、反らしてどちらが伸筋側か確かめる。1 試行ごとに CSV が書き出せたかその場で見る。伸展・屈曲とも確認動作が 100 %MVC 以下なら、`calibration.py` の `DEFAULT_TASKS` と 4 章の表を差し替える |
+| 次に研究室で | MVC を確かめる | 伸展は B（腕を机に乗せ、手のひら下・握って上から押さえてもらう）、屈曲は腕を机に乗せて机に向かって押し下げる。順番は、確認動作（最初）→ 伸展（B）→ 屈曲。課題のあいだは十分休む。記録の前に `sensors.json` を書き、反らしてどちらが伸筋側か確かめる。API なら `calibrate` で記録と保存まで一度にできる（Discover で取るなら、1 試行ごとに CSV が書き出せたかその場で見る）。伸展・屈曲とも確認動作が 100 %MVC 以下なら、`calibration.py` の `DEFAULT_TASKS` と 4 章の表を差し替える |
 | 次に研究室で | 6 か所に付けて本番データを取る | 手順は 4 章。MVC を固めてから |
 | 未着手 | コードの MVC 課題一覧を 6 課題に増やす | `analysis/emgpipe/calibration.py` の `MVC_TASKS` は、手首の伸展・屈曲・グリップと、伸展の MVC を比べる候補（`mvc_trial.md`）だけ。肩・肘の課題はまだない。CSV で進めるあいだは、ファイル名に課題名が入っていれば動くので困らない。API で `calibrate` を使うときに必要 |
 | 未確認 | デモの 41 秒の屈筋側の振れ | 反らしきった手首を戻した瞬間に約 100 %MVC。戻す動きの筋活動か、手が机に当たったノイズか |
@@ -59,7 +60,15 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 
 ## 4. Trigno Discover で記録する手順
 
-API のキーが届くまでは、この手順で CSV を取り、`import-csv` から正規化する。
+API で取れるようになった（3 章）。API では、準備（`sensors.json` など）は同じで、記録は Discover の代わりに次で行う。Trigno Discover は閉じておく。手順の中身（課題・時間・休憩）は下の表のとおり。
+
+```powershell
+python -m emgpipe devices                       # センサが全部見つかるか
+python -m emgpipe calibrate --session <日付>     # 安静 + MVC。課題は --tasks、試行数は --trials
+python -m emgpipe record --live --duration 10 --cues "0:脱力,5:全力で反らす,8:脱力" --session <日付> --name <名前>
+```
+
+Discover で取る場合は、この手順で CSV を取り、`import-csv` から正規化する。
 
 ### 準備
 
