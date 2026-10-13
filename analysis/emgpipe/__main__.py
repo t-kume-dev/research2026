@@ -53,7 +53,14 @@ def cmd_record(args):
     src = _open(args)
     out_dir = _session_dir(args.session)
     name = args.name or datetime.now().strftime("free_%H%M%S")
-    rec = record(src, args.duration, args.task)
+    view = None
+    if args.live:
+        from .plot import LiveView, parse_cues
+        view = LiveView(src.channels, args.duration, parse_cues(args.cues))
+        view.countdown(args.lead)
+    rec = record(src, args.duration, args.task, on_update=view.update if view else None)
+    if view:
+        view.finish()
     path = rec.save(out_dir / f"{name}.npz")
     src.close()
     print(f"保存: {path}")
@@ -120,6 +127,9 @@ def main(argv=None):
     r.add_argument("--session", help="セッション名か保存先ディレクトリ（既定は data/raw/<今日の日付>）")
     r.add_argument("--name", help="ファイル名（拡張子なし）")
     r.add_argument("--task", default="", help="記録のラベル")
+    r.add_argument("--live", action="store_true", help="記録中に窓を開き、指示と直近の RMS を表示する")
+    r.add_argument("--cues", default="", help='--live で出す指示。"0:脱力,5:反らす"（開始からの秒:指示）')
+    r.add_argument("--lead", type=int, default=3, help="--live で開始前に数える秒数")
     r.set_defaults(func=cmd_record)
 
     c = sub.add_parser("calibrate")

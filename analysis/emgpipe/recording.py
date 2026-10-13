@@ -11,6 +11,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
@@ -47,10 +48,12 @@ class Recording:
         return cls(chans, data, meta.pop("task", ""), meta)
 
 
-def record(source: Source, duration: float, task: str = "", progress: bool = True) -> Recording:
+def record(source: Source, duration: float, task: str = "", progress: bool = True,
+           on_update: Callable[[dict[str, list[np.ndarray]], float], None] | None = None) -> Recording:
     """duration 秒ぶん記録する。
 
     終了判定は壁時計ではなくサンプル数で行う（全 EMG チャネルが fs*duration に達するまで）。
+    on_update(これまでのデータ, 経過秒) は約 0.1 秒ごとに呼ばれる（記録中の表示用）。
     """
     names = [c.name for c in source.channels]
     buf: dict[str, list[np.ndarray]] = {n: [] for n in names}
@@ -62,12 +65,17 @@ def record(source: Source, duration: float, task: str = "", progress: bool = Tru
     source.start(task)
     t0 = time.perf_counter()
     last_print = -1
+    last_update = 0.0
     try:
         while any(got[n] < target[n] for n in watch):
             for name, x in source.read().items():
                 if name in buf and x.size:
                     buf[name].append(x)
                     got[name] += x.size
+            now = time.perf_counter() - t0
+            if on_update and now - last_update >= 0.1:
+                last_update = now
+                on_update(buf, now)
             if progress:
                 sec = int(time.perf_counter() - t0)
                 if sec != last_print:

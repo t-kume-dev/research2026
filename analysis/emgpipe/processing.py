@@ -21,7 +21,7 @@ def bandpass(x: np.ndarray, fs: float, band=BANDPASS_HZ, order: int = 4) -> np.n
 
 
 def envelope(x: np.ndarray, fs: float, lp_hz: float = ENVELOPE_LP_HZ) -> np.ndarray:
-    """生 EMG から線形包絡線を作る。単位は入力と同じ（Delsys API は V、疑似信号は mV）。"""
+    """生 EMG から線形包絡線を作る。単位は入力と同じ（Delsys API・Discover の CSV・疑似信号とも mV）。"""
     rect = np.abs(bandpass(x, fs))
     sos = signal.butter(4, lp_hz, btype="lowpass", fs=fs, output="sos")
     return np.maximum(signal.sosfiltfilt(sos, rect), 0.0)

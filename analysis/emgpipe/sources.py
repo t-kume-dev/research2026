@@ -147,10 +147,19 @@ class SimulatedSource(Source):
 # 実機: Delsys API (AeroPy)
 # ---------------------------------------------------------------------------
 
-def _load_credentials() -> tuple[str, str]:
-    """キーとライセンスを環境変数か analysis/delsys_license.json から読む。
+def _read_single(pattern: str) -> str:
+    """analysis/ 直下で pattern に合うファイルが 1 つだけなら、その中身を返す。"""
+    paths = sorted(ANALYSIS_DIR.glob(pattern))
+    if len(paths) > 1:
+        raise RuntimeError(f"{ANALYSIS_DIR} に {pattern} が複数あります。1 つだけにしてください。")
+    return paths[0].read_text(encoding="utf-8-sig").strip() if paths else ""
 
-    どちらも Delsys から発行される文字列。リポジトリには入れない（.gitignore 済み）。
+
+def _load_credentials() -> tuple[str, str]:
+    """キーとライセンスを読む。環境変数 → analysis/delsys_license.json → analysis/*.key・*.lic の順。
+
+    どちらも Delsys から発行される文字列。届いた .key / .lic はそのまま analysis/ に置けばよい。
+    リポジトリには入れない（.gitignore 済み）。
     """
     key = os.environ.get("DELSYS_KEY", "")
     lic = os.environ.get("DELSYS_LICENSE", "")
@@ -158,10 +167,12 @@ def _load_credentials() -> tuple[str, str]:
     if (not key or not lic) and path.exists():
         d = json.loads(path.read_text(encoding="utf-8"))
         key, lic = d.get("key", key), d.get("license", lic)
+    key = key or _read_single("*.key")
+    lic = lic or _read_single("*.lic")
     if not key or not lic:
         raise RuntimeError(
-            "Delsys API のキーとライセンスが見つかりません。環境変数 DELSYS_KEY / DELSYS_LICENSE を"
-            f"設定するか、{path} に {{\"key\": \"...\", \"license\": \"...\"}} を置いてください。")
+            "Delsys API のキーとライセンスが見つかりません。届いた .key と .lic を "
+            f"{ANALYSIS_DIR} に置くか、環境変数 DELSYS_KEY / DELSYS_LICENSE を設定してください。")
     return key, lic
 
 
@@ -204,7 +215,9 @@ class DelsysSource(Source):
         if not self.channels:
             raise RuntimeError("チャネルが1つも見つかりません。センサが起動・ペアリング済みか確認してください。")
 
-        self.base.Configure()
+        # 同期出力は使わないが、周波数が既定の 0 のままだと Configure が失敗する（37/74/148 Hz のどれか）
+        self.base.SetSyncOutput(False, 0, False, 74)
+        self.base.Configure(False, False)  # 開始・停止トリガは使わない（公式サンプルと同じ）
         if not self.base.IsPipelineConfigured():
             raise RuntimeError(f"Configure に失敗しました（状態: {self.base.GetPipelineState()}）")
 

@@ -13,6 +13,8 @@ data/raw/
 # --- Delsys API（配布物とライセンスはコミットしない） ---
 analysis/resources/
 analysis/delsys_license.json
+analysis/*.key
+analysis/*.lic
 
 # --- 進捗スライドの PDF・画像（pptx から作り直せる。OneNote に貼る用） ---
 docs/progress/slides/pdf/
