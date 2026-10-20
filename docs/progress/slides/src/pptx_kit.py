@@ -31,6 +31,18 @@ __all__ = [
     "REPO", "SLIDES_DIR", "INK", "GRAY", "RULE", "BLUE", "NAVY", "ORANGE", "ORANGE_TXT",
     "PALE_BLUE", "PALE_ORANGE", "PALE_GRAY", "MSO_ANCHOR", "PP_ALIGN",
     "Deck", "P", "textbox", "box", "line", "freeform", "title", "bullets", "takeaway", "cover",
+    "MILESTONES", "roadmap",
+]
+
+# docs/milestones.md の一覧と同じもの。あちらを書き換えたらここも合わせる
+MILESTONES = [
+    ("M1", "計測系が回る", "11/5", "6 か所の MVC と数分の記録を、API で 1 回の来室で取りきれる"),
+    ("M2", "エイム中の\n差が見える", "11/26", "エイム課題の記録をイベントの時刻と合わせ、条件のあいだの差を図で示せる"),
+    ("M3", "日をまたいで\n比べられる", "12/17", "自分の複数日の記録を、%MVC で日をまたいで比べられる"),
+    ("M4", "実験1 の\n設計が決まる", "12/24", "予備実験で、手順・人数・来訪回数が決まる"),
+    ("M5", "実験1 が\n終わる", "2027/2", "本実験と分析が終わる"),
+    ("M6", "修論の\n下書き", "2027/3", "実験1 までで、修論の章立てと図表がそろう"),
+    ("M7", "修論の提出", "2028/1〜2", "M6 の下書きを仕上げて出す"),
 ]
 
 
@@ -217,6 +229,34 @@ def title(slide, text, page):
 
 def bullets(slide, x, y, w, h, items, size=46, gap=20):
     textbox(slide, x, y, w, h, [P("・" + t, size, True, spacing=1.3, after=gap) for t in items])
+
+
+def roadmap(slide, now, page):
+    """マイルストーンを横に並べ、now 番目（0 始まり）に「今ここ」を付ける。表紙の次に置く。"""
+    title(slide, "マイルストーン", page)
+    y, d, lw = 440, 56, 230  # 線の高さ、丸の直径、ラベルの幅
+    xs = [210 + i * 236 for i in range(6)] + [1700]
+    line(slide, xs[0], y, xs[5], y, RULE, 4)
+    line(slide, xs[5], y, xs[6], y, RULE, 4, dash=True)
+    textbox(slide, xs[5] + 40, y + 20, xs[6] - xs[5] - 80, 50,
+            [P("就活・実験2（任意）", 22, True, GRAY, align=PP_ALIGN.CENTER)])
+    for i, (key, name, due, _) in enumerate(MILESTONES):
+        x = xs[i]
+        hot, done = i == now, i < now
+        box(slide, x - d / 2, y - d / 2, d, d, fill=BLUE if hot else GRAY if done else "FFFFFF",
+            line=None if hot or done else RULE, line_w=3, radius=d / 2)
+        if hot:
+            box(slide, x - 70, y - 150, 140, 48, fill=BLUE, radius=24, anchor=MSO_ANCHOR.MIDDLE,
+                paras=[P("今ここ", 24, True, "FFFFFF", align=PP_ALIGN.CENTER)])
+        color = BLUE if hot else GRAY if done else INK
+        textbox(slide, x - lw / 2, y - 92, lw, 40, [P(key, 30, True, color, align=PP_ALIGN.CENTER)])
+        textbox(slide, x - lw / 2, y + 46, lw, 140, [
+            P(name, 28, True, color, align=PP_ALIGN.CENTER, spacing=1.15, after=6),
+            P(due, 24, color=GRAY, align=PP_ALIGN.CENTER)])
+    key, name, due, done_when = MILESTONES[now]
+    box(slide, 116, 680, 1676, 130, fill=PALE_BLUE, radius=12, anchor=MSO_ANCHOR.MIDDLE, pad=(0, 40, 0, 40),
+        paras=[P(f"{key}　{name.replace(chr(10), '')}（〜{due}）", 34, True, NAVY, after=6),
+               P("完了基準：" + done_when, 28, color=INK)])
 
 
 def takeaway(slide, text, color=INK):
