@@ -1,4 +1,4 @@
-# 引き継ぎメモ（2026-10-13 時点）
+# 引き継ぎメモ（2026-10-20 時点）
 
 PC を移るときに、Git に入っていないものと、やりかけのことをまとめたもの。
 状況が変わったら書き換え、不要になったら消す。
@@ -6,118 +6,70 @@ PC を移るときに、Git に入っていないものと、やりかけのこ�
 ## 1. 新しい PC での準備
 
 1. `git clone https://github.com/t-kume-dev/research2026`
-2. `analysis/` で依存ライブラリを入れる（Windows では UTF-8 モードが必要）
+2. 前の PC で作った `research2026_transfer_<日付>.zip` を、リポジトリの一番上で展開する（2 章）
+
+   ```powershell
+   tar -x -f <zip のパス>
+   ```
+3. `analysis/` で依存ライブラリを入れる（Windows では UTF-8 モードが必要）
 
    ```powershell
    $env:PYTHONUTF8 = "1"; pip install -r requirements.txt
    ```
-3. Delsys の DLL を置く：[Example-Applications](https://github.com/delsys-inc/Example-Applications) の
+4. Delsys の DLL を置く：[Example-Applications](https://github.com/delsys-inc/Example-Applications) の
    `Python/resources/` の中身を**全部** `analysis/resources/` に（約 13 MB。`.gitignore` 済み）
-4. 確認：`analysis/` で `python -m unittest discover tests` が 5 件とも通る
+5. `.git/info/exclude` に `_local/` を 1 行足す
+6. 確認：`analysis/` で `python -m unittest discover tests` が 5 件とも通る。
+   `python -m emgpipe --source sim --sim-channels 6 lab --session sim_test` で、疑似信号のまま窓が最後まで進む
 
 ## 2. Git に入っていないもの
 
-| もの | 場所 | 移し方 |
+zip（約 76 MB）に入れたもの：
+
+| もの | 場所 | メモ |
 | --- | --- | --- |
-| 09-29 のデモデータ | `data/raw/2026-09-29/` | **手で持っていく**（USB かクラウド、約 34 MB） |
-| 10-06 の MVC 比較データ | `data/raw/2026-10-06/` | **手で持っていく**（約 105 MB）。CSV 13 個、`sensors.json`、`notes.txt` |
-| Delsys の DLL | `analysis/resources/` | 1-3 のとおり取り直せばよい |
-| API のキーとライセンス | `analysis/DelsysAPI.key`、`analysis/DelsysAPI.lic` | **手で持っていく**。届いたファイルをそのまま `analysis/` に置けば読む（`analysis/*.key`・`*.lic` は `.gitignore` 済み）。中身はチャットや Git に出さない |
-| 10-13 の API の試し取り | `data/raw/2026-10-13/` | 要らなければ持っていかなくてよい。`.npz` 4 個と `calib_test/`。中身は `docs/progress/2026-10-15.md` の補足メモ |
-| 問い合わせメールの下書き | `_local/delsys_inquiry.md` | 先生に渡し済みなので不要 |
-| 進捗スライドの PDF | `docs/progress/slides/pdf/` | 不要。スライドのスクリプトを実行すれば作り直せる |
-| OneNote の検証コード自動入力 | `~/Documents/develop/ms-otp/`（このリポジトリの外） | **持っていかない**。今の PC だけで使う。ほかの PC では検証コードを手で入れる |
-| Claude にプッシュを許す設定 | `.claude/settings.local.json` | `.git/info/exclude` で除外。新しい PC では作り直す（`Bash(git push)` を許可） |
+| 計測データ | `data/raw/2026-09-29/`・`10-06/`・`10-13/`・`10-20/` | 消えると戻せない。10-20 が最新（M1-1〜M1-3） |
+| 論文 PDF | `literature/pdf/`（18 本） | 読書メモは `literature/notes/`（Git 管理） |
+| API のキーとライセンス | `analysis/DelsysAPI.key`、`analysis/DelsysAPI.lic` | 中身はチャットや Git に出さない。zip も人に渡さない |
+| ローカルのメモ | `_local/` | `delsys_inquiry.md`（先生に渡し済み）、`discover_recording.md`（API 以前の手順）。どちらも不要なら消してよい |
 
-- どちらの日も、必要なのは **CSV と `sensors.json`（と `notes.txt`）** だけ。`.npz`・`calibration.json`・`mvc_compare.csv` は次で作り直せる
+zip に入れていないもの：
 
-  ```powershell
-  python -m emgpipe import-csv 2026-09-29
-  python -m emgpipe recalib --session 2026-09-29
-  python -m emgpipe normalize ../data/raw/2026-09-29/demo.npz
-  python -m emgpipe import-csv 2026-10-06
-  python -m emgpipe mvc-compare --session 2026-10-06
-  ```
-- 10-06 のセンサは 09-29 と逆（センサ 0 = 伸筋側、3 = 屈筋側）。記録中に上下がわからなくなり、課題ごとの反応から決めた。理由は `notes.txt`
-- `_local/` は `.git/info/exclude` で除外していた。新しい PC で同じ使い方をするなら、そこに `_local/` を 1 行足す
-- スライドのスクリプト（`pptx_kit.py`）は、ms-otp のフォルダがある PC でだけ、PDF のあとに検証コードの待ち受けを起動する。ない PC では何もしないので、そのまま使える
+| もの | 場所 | 理由 |
+| --- | --- | --- |
+| Delsys の DLL | `analysis/resources/` | 1-4 のとおり取り直せる |
+| 進捗スライドの PDF | `docs/progress/slides/pdf/` | スライドのスクリプトを実行すれば作り直せる |
+| OneNote の検証コード自動入力 | `~/Documents/develop/ms-otp/`（リポジトリの外） | 今の PC だけで使う。ほかの PC では検証コードを手で入れる。`pptx_kit.py` はフォルダがなければ何もしない |
+| Claude にプッシュを許す設定 | `.claude/settings.local.json` | 必要なら新しい PC で作る（`Bash(git push)` を許可） |
+
+- 09-29・10-06 は CSV から `.npz` を作り直せる（`import-csv` → `recalib` / `mvc-compare`）。zip には `.npz` も入っているので、そのままでも使える
+- 基地局の USB は、ふだん研究室の PC に挿さっている。記録する PC に挿し替える
 
 ## 3. やりかけのこと
 
+マイルストーンと内訳は `docs/milestones.md`。今は **M1：計測系が回る（〜11/5）**。
+
 | 状態 | やること | メモ |
 | --- | --- | --- |
-| 一部済み | API へ移行する | 10-13 に、自分の PC で接続・記録・2 本同時・`calibrate` の繰り返しまで確かめた（`docs/progress/2026-10-15.md`）。残り：6 本同時、数分の長い記録（`--live` の窓は記録全体をつなぎ直すので、長いと重くなるかも）、`calibrate` でも `--live` の窓を出す、`--session` に相対パスを渡すと `data/data/raw/...` に保存される件。基地局の USB は、ふだん研究室の PC に挿さっているので、使う PC に挿し替える |
-| 未着手 | 再現性を高めるためにすることを考える | 同じやり方（A）でも、09-29 は確認動作が約 350 %MVC、10-06 は 96% と日によって大きく違った。センサの位置、押さえ方、確認動作のやり方などが候補 |
-| 次に研究室で | ほかの箇所の MVC を始める | 肩・上腕・僧帽筋。課題が多く時間がかかりそうなので、前腕の MVC と並行して早めに始める。課題の案は 4 章の表 |
-| 確認 | 研究室の PC に一人用（H）の記録が残っていないか | 10-06 に取ったはずだが CSV がない（E と F のあいだが 3.5 分空いている）。Trigno Discover に残っていれば CSV に書き出し、`data/raw/2026-10-06/mvc_ext_fixed_solo_01.csv` として入れて `import-csv` → `mvc-compare` |
-| 次に研究室で | MVC を確かめる | 伸展は B（腕を机に乗せ、手のひら下・握って上から押さえてもらう）、屈曲は腕を机に乗せて机に向かって押し下げる。順番は、確認動作（最初）→ 伸展（B）→ 屈曲。課題のあいだは十分休む。記録の前に `sensors.json` を書き、反らしてどちらが伸筋側か確かめる。API なら `calibrate` で記録と保存まで一度にできる（Discover で取るなら、1 試行ごとに CSV が書き出せたかその場で見る）。伸展・屈曲とも確認動作が 100 %MVC 以下なら、`calibration.py` の `DEFAULT_TASKS` と 4 章の表を差し替える |
-| 次に研究室で | 6 か所に付けて本番データを取る | 手順は 4 章。MVC を固めてから |
-| 未着手 | コードの MVC 課題一覧を 6 課題に増やす | `analysis/emgpipe/calibration.py` の `MVC_TASKS` は、手首の伸展・屈曲・グリップと、伸展の MVC を比べる候補（`mvc_trial.md`）だけ。肩・肘の課題はまだない。CSV で進めるあいだは、ファイル名に課題名が入っていれば動くので困らない。API で `calibrate` を使うときに必要 |
-| 未確認 | デモの 41 秒の屈筋側の振れ | 反らしきった手首を戻した瞬間に約 100 %MVC。戻す動きの筋活動か、手が机に当たったノイズか |
-| 未着手 | エイム課題のイベント記録 | 「静止区間の残余活動」を出すには、待機中・クリック直前などの区間が要る。マウスのクリック・位置の時刻ログを取り、EMG と時刻を合わせる仕組みを作る。Aim Lab を使う場合、Discover のマーカーは 1 本（1 タスク）ごとに始まりと終わりの 2 つ |
-| 検討中 | 前腕の小指側にセンサを足すか | マウスを左右に振る動き（橈屈・尺屈）のうち、小指側は今の上下 2 か所では弱く映る可能性。波形を見てから決める |
-| 検討中 | 最終実験での下側センサの付け方 | 前腕の下側のセンサは、腕を机に置くと当たって邪魔。貼る位置をずらす、Trigno Mini を使う、アームレストを使う など |
+| 次に研究室で（10/29 まで） | M1-4：残り 4 か所の MVC を一人用で試す | `python -m emgpipe lab --solo --session <日付>`。前の日に `sensors.json` を書いておく（番号はシール 1〜6） |
+| 同じ日に | M1-3：手首の屈曲を取り直す | 確認動作は手のひら上で上に曲げきる（`lab` に入れてある）。課題は天板の裏を押し上げる（`flex_fixed_solo`） |
+| 同じ日に | 直した窓を実機で確かめる | 姿勢の図・折り返し・休憩 10 秒。模擬では 6 チャネル・17 ステップが通った |
+| 未着手 | 10-22 のスライド | 成果報告 `docs/progress/2026-10-22.md` から作る。`2026-10-15.py` をコピーし、表紙の次に `roadmap(steps=...)`。ノート案は報告の補足メモ。`roadmap()` の状態に「一部済」の色がまだない |
+| 未着手 | 再現性を高めるためにすることを考える | 同じやり方（A）でも、09-29 は確認動作が約 350 %MVC、10-06 は 96%。M3 のときに考える |
+| 未着手 | エイム課題のイベント記録 | M2 の中身。クリック・マウス位置の時刻ログを取り、EMG と時刻を合わせる |
+| 未確認 | デモの 41 秒の屈筋側の振れ | 反らしきった手首を戻した瞬間に約 100 %MVC |
+| 検討中 | 前腕の小指側にセンサを足すか、下側センサの付け方 | 波形を見てから。M4 より後は機能を足さない |
 
-## 4. Trigno Discover で記録する手順
-
-API で取れるようになった（3 章）。API では、準備（`sensors.json` など）は同じで、記録は Discover の代わりに次で行う。Trigno Discover は閉じておく。手順の中身（課題・時間・休憩）は下の表のとおり。
+## 4. 研究室での 1 回ぶん
 
 ```powershell
-python -m emgpipe devices                       # センサが全部見つかるか
-python -m emgpipe calibrate --session <日付>     # 安静 + MVC。課題は --tasks、試行数は --trials
-python -m emgpipe record --live --duration 10 --cues "0:脱力,5:全力で反らす,8:脱力" --session <日付> --name <名前>
+cd analysis
+python -m emgpipe devices                          # 6 本見つかるか（S1〜S6）
+python -m emgpipe pair 3                           # 見つからない番号だけ登録し直す
+python -m emgpipe lab --solo --session <日付>       # 信号の確認 → 安静 → 確認動作 → MVC 2 周 → 3 分の記録
 ```
 
-Discover で取る場合は、この手順で CSV を取り、`import-csv` から正規化する。
-
-### 準備
-
-- 電極を付け、どのセンサ番号をどこに付けたかを `sensors.json`（部位 → センサ番号）に書く
-
-  ```json
-  {
-    "前腕の上（伸筋群）": 3,
-    "前腕の下（屈筋群）": 0,
-    "三角筋中部": 1,
-    "上腕二頭筋": 2,
-    "上腕三頭筋": 4,
-    "僧帽筋上部": 5
-  }
-  ```
-  （番号は例。付けた日に実物を見て書く）
-
-  | 筋 | 付け方 |
-  | --- | --- |
-  | 前腕の伸筋群（前腕の上） | 前腕バンド |
-  | 前腕の屈筋群（前腕の下） | 前腕バンド |
-  | 三角筋中部 | 上腕バンド（肩寄り） |
-  | 上腕二頭筋 | 上腕バンド |
-  | 上腕三頭筋 | 上腕バンド |
-  | 僧帽筋上部 | 貼り付け（探索期間だけ） |
-- Trigno Discover を開き、全センサの波形が出ていることを確認する
-
-### 記録（1 回ごとに別ファイルで書き出す）
-
-動作の始まりと終わりに Discover のマーカーを付ける。`import-csv` は最初と最後のマーカーの間だけを使う。
-
-| 内容 | 長さ | ファイル名 |
-| --- | --- | --- |
-| 安静：マウスに手を置いたまま脱力（マウスがなければ机の上で） | 10 秒 | `rest.csv` |
-| 手首の伸展：手の甲を上に反らす（固定方法は 3 章を参照） | 5 秒 × 3 | `mvc_wrist_extension_01.csv` 〜 `_03` |
-| 手首の屈曲：机に置いた手を下に押し下げる | 5 秒 × 3 | `mvc_wrist_flexion_01.csv` 〜 `_03` |
-| 肩の外転：腕を横に 90° 上げ、上から押さえてもらって全力で持ち上げる | 5 秒 × 3 | `mvc_shoulder_abduction_01.csv` 〜 |
-| 肘の屈曲：肘を 90° に曲げ、手首を押さえてもらって全力で曲げる | 5 秒 × 3 | `mvc_elbow_flexion_01.csv` 〜 |
-| 肘の伸展：同じ姿勢で全力で伸ばす | 5 秒 × 3 | `mvc_elbow_extension_01.csv` 〜 |
-| 肩のすくめ：肩を上から押さえてもらい、全力ですくめる | 5 秒 × 3 | `mvc_shoulder_shrug_01.csv` 〜 |
-| （任意）橈屈・尺屈：手を縦にして、親指側を上に／小指側を下に全力で | 5 秒 × 3 | `mvc_radial_deviation_01.csv` 〜 / `mvc_ulnar_deviation_01.csv` 〜 |
-| エイム練習など | 自由 | `aim_01.csv` など |
-
-- MVC はマウスを持たずに取る。前腕を机に置き、手のひらは下向き。手首がほとんど動かない状態で力だけを全力で出す
-- 試行間は 60 秒休憩（全部で 20 分近くかかる。長すぎれば 2 試行・30 秒休憩に減らしてよい）
-- 電極は途中で貼り直さない（貼り直したら安静と MVC から取り直す）
-- エイムの記録は、始めた直後にマウスを 3 回強く握るなどの合図を入れておくと、後でゲーム側のログと時刻を合わせやすい
-
-### 保存
-
-- 全ファイルを `data/raw/<日付>/` に入れる（`.gitignore` 済み）
-- 何秒ごとに何をしたか、どの姿勢で MVC を取ったかを同じフォルダの `notes.txt` に書く
+- `pair` は、センサを充電台に載せたまま Enter を押し、すぐ外す
+- 本番の手首の MVC は「上に全力で曲げ、人に押さえてもらう」（`--solo` を外す）
+- 窓はクリックで進む。記録は `data/raw/<日付>/` に入り、最後に `mvc_compare.csv` と `calibration.json` を作る
+- 何をしたかは同じフォルダの `notes.txt` に書く（`session_log.txt` は自動で残る）
