@@ -3,8 +3,8 @@
   1. 接続とセンサの本数の確認
   2. 信号の確認（脱力 → 反らす → 脱力）。浮いたセンサ（50 Hz の雑音ばかり）がないか見る
   3. 安静 10 秒
-  4. 確認動作（反らしきる・曲げきる、1 回ずつ）。疲れる前に取る
-  5. MVC：伸展（B）× 3 → 屈曲 × 3。試行のあいだは休憩
+  4. 確認動作（手首を上に反らしきる・手のひら上で上に曲げきる、1 回ずつ）。疲れる前に取る
+  5. MVC：課題を 1 周ずつ回す（既定 2 周）。同じ筋が続かないので、休憩は短くてよい（既定 10 秒）
   6. 長い記録（既定 180 秒）。マウスを自由に動かす
   7. MVC の比べ（mvc_compare.csv）と calibration.json を出す
 
@@ -14,28 +14,36 @@
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 
-from .calibration import (MVC_TASKS, calibration_from_dir, compare_tasks, mvc_level, print_calibration,
-                          print_comparison, save_comparison)
+from .calibration import (MVC_TASKS, TASK_TITLES, calibration_from_dir, compare_tasks, mvc_level,
+                          print_calibration, print_comparison, save_comparison)
 from .plot import LiveView, parse_cues
 from .recording import Recording, record
 from .sources import Source
+
+# 手首はどちらも「上に全力で曲げ、人に押さえてもらう」が本番。一人で試すときは天板の裏（10-20 に決めた）
+WRIST_TASKS = ("ext_fist_pron", "flex_fist_sup")
+WRIST_TASKS_SOLO = ("ext_fixed_solo", "flex_fixed_solo")
+# 前腕以外。まず一人でできる形で試す（M1-4）
+OTHER_TASKS = ("shoulder_abduction_solo", "elbow_flexion_solo", "elbow_extension_solo", "shoulder_shrug_solo")
 
 
 @dataclass
 class Step:
     name: str          # 保存するファイル名（拡張子なし）
-    task: str          # 記録のラベル（疑似信号はこれで活動を変える）
+    task: str          # 記録のラベル。姿勢の図もこれで選ぶ
     duration: float
-    cues: str          # 窓に出す指示 "0:脱力,3:反らす"
-    prompt: str        # 始める前に窓に出す説明
+    cues: str          # 記録中に出す指示 "0:脱力,3:反らす"
+    title: str         # 始める前に大きく出す見出し
+    desc: str = ""     # その下に出す説明
     rest_after: float = 0.0
-
 
 def hum_fraction(x: np.ndarray, fs: float, mains: float = 50.0, width: float = 1.0) -> float:
     """信号のうち、電源の雑音（50 Hz とその倍数 ±1 Hz）が占める割合。センサが浮くと 1 に近づく。"""
@@ -48,26 +56,36 @@ def hum_fraction(x: np.ndarray, fs: float, mains: float = 50.0, width: float = 1
     return float(p[m].sum() / p.sum()) if p.sum() > 0 else 0.0
 
 
-def build_steps(ext_task: str, flex_task: str, trials: int, rest_between: float, long_s: float) -> list[Step]:
+def build_steps(tasks: list[str], rounds: int, rest_between: float, long_s: float,
+                switch_rest: float = 10.0) -> list[Step]:
     steps = [
-        Step("signal_check", "", 10, "0:脱力,4:手首を反らす,7:脱力",
-             "信号の確認（10 秒）。脱力 → 手首を反らす → 脱力", rest_after=0),
-        Step("rest", "rest", 10, "0:脱力",
-             "安静（10 秒）。マウスに手を置いたまま、力を抜く", rest_after=5),
-        Step("check_free_extension_01", "free_extension", 5, "0:反らしきる",
-             "確認動作・伸展（5 秒）。誰も押さえず、手首を全力で反らしきる", rest_after=rest_between),
-        Step("check_free_flexion_01", "free_flexion", 5, "0:曲げきる",
-             "確認動作・屈曲（5 秒）。誰も押さえず、手首を全力で曲げきる", rest_after=rest_between),
+        Step("signal_check", "", 10, "0:脱力,4:手首を反らす,7:脱力", "信号の確認（10 秒）",
+             "脱力 → 手首を反らす → 脱力。浮いたセンサがないかを見る"),
+        Step("rest", "rest", 10, "0:脱力", "安静（10 秒）", "マウスに手を置いたまま、力を抜いて動かない",
+             rest_after=5),
+        Step("check_free_extension_01", "free_extension", 5, "0:反らしきる", "確認動作：伸展（5 秒）",
+             "手のひら下。誰も押さえず、手首を上に全力で反らしきる", rest_after=rest_between),
+        Step("check_free_flexion_01", "free_flexion", 5, "0:曲げきる", "確認動作：屈曲（5 秒）",
+             "手のひら上。誰も押さえず、手首を上に全力で曲げきる", rest_after=switch_rest),
     ]
-    for task in (ext_task, flex_task):
-        for k in range(1, trials + 1):
-            steps.append(Step(f"mvc_{task}_{k:02d}", task, 5, "0:全力",
-                              f"MVC {k}/{trials}（5 秒）。{MVC_TASKS.get(task, task)}", rest_after=rest_between))
-    steps[-1].rest_after = 10
-    steps.append(Step("long_free", "", long_s, "0:マウスを自由に動かす",
-                      f"長い記録（{long_s:.0f} 秒）。マウスを自由に動かす（エイム練習でもよい）"))
+    for r in range(1, rounds + 1):
+        for task in tasks:
+            steps.append(Step(f"mvc_{task}_{r:02d}", task, 5, "0:全力",
+                              f"MVC：{TASK_TITLES.get(task, task)}（{r}/{rounds} 周目）",
+                              re.sub(r"^【一人用】", "", MVC_TASKS.get(task, "")), rest_after=rest_between))
+    steps[-1].rest_after = switch_rest
+    steps.append(Step("long_free", "", long_s, "0:マウスを自由に動かす", f"長い記録（{long_s:.0f} 秒）",
+                      "マウスを自由に動かす（エイム練習でもよい）"))
     return steps
 
+
+def load_labels(session_dir: Path) -> dict[str, str]:
+    """sensors.json（部位 → 番号）から、窓に出す {チャネル名: "S1 部位"} を作る。なければ空。"""
+    path = Path(session_dir) / "sensors.json"
+    if not path.exists():
+        return {}
+    table = json.loads(path.read_text(encoding="utf-8"))
+    return {f"S{n}_EMG1": f"S{n} {site}" for site, n in table.items() if n is not None}
 
 def run_lab_session(source: Source, session_dir: Path, steps: list[Step], expect: int = 6,
                     lead: int = 3) -> None:
@@ -83,11 +101,11 @@ def run_lab_session(source: Source, session_dir: Path, steps: list[Step], expect
         print(f"  警告: {expect - n} 本足りない。センサが眠っていないか（0 本と出たことがある）、"
               "電源が入っているか確認する。このまま続けてもよい")
 
-    view = LiveView(source.channels, steps[0].duration)
+    view = LiveView(source.channels, steps[0].duration, pose_panel=True, labels=load_labels(session_dir))
     try:
         for i, st in enumerate(steps, 1):
-            view.phase(st.duration, parse_cues(st.cues))
-            view.wait_click(f"[{i}/{len(steps)}] {st.prompt}\nクリックで開始")
+            view.phase(st.duration, parse_cues(st.cues), pose=st.task, desc=st.desc + "\n\nクリックで開始")
+            view.wait_click(f"[{i}/{len(steps)}] {st.title}")
             view.countdown(lead)
             rec = record(source, st.duration, st.task, on_update=view.update)
             path = rec.save(session_dir / f"{st.name}.npz")
@@ -99,7 +117,9 @@ def run_lab_session(source: Source, session_dir: Path, steps: list[Step], expect
             elif st.name.startswith(("mvc_", "check_")):
                 print("  ピーク: " + ", ".join(f"{c}={mvc_level(rec, c) * 1000:.0f} μV" for c in rec.emg_names))
             if st.rest_after > 0 and i < len(steps):
-                view.rest(st.rest_after, "休憩（次は " + steps[i].prompt.split("。")[0] + "）")
+                nxt = steps[i]
+                view.phase(0, pose=nxt.task, desc="次：" + nxt.title + "\n" + nxt.desc)
+                view.rest(st.rest_after, "休憩")
         view.finish()
     finally:
         log.close()

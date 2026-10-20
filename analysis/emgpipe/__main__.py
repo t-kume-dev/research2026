@@ -120,7 +120,7 @@ def cmd_pair(args):
     from .sources import DelsysSource
     src = DelsysSource()
     for n in args.numbers:
-        input(f"\nシール {n} のセンサだけを手に取り、Enter を押したら、すぐ基地局に当てる（{args.timeout:.0f} 秒待つ） > ")
+        input(f"\nシール {n} のセンサを充電台に載せたまま Enter を押し、すぐ外す（{args.timeout:.0f} 秒待つ） > ")
         ok = src.pair(n, args.timeout)
         print(f"  シール {n} → 登録番号 {n}: " + ("できた" if ok else "できなかった（時間切れか失敗。もう一度流す）"))
     src.close()
@@ -128,13 +128,13 @@ def cmd_pair(args):
 
 
 def cmd_lab(args):
-    from .session import build_steps, run_lab_session
+    from .session import OTHER_TASKS, WRIST_TASKS, WRIST_TASKS_SOLO, build_steps, run_lab_session
     src = _open(args)
-    steps = build_steps("ext_fixed_solo" if args.solo else "wrist_extension", "wrist_flexion",
-                        args.trials, args.rest_between, args.long)
+    tasks = list(WRIST_TASKS_SOLO if args.solo else WRIST_TASKS) + ([] if args.wrist_only else list(OTHER_TASKS))
+    steps = build_steps(tasks, args.rounds, args.rest_between, args.long)
     try:
-        # 一人用は、クリックしてから手を天板の裏に入れるので長めに数える
-        run_lab_session(src, _session_dir(args.session), steps, expect=args.expect, lead=5 if args.solo else 3)
+        # クリックしてから姿勢を作る（天板の裏に手を入れる、座面を握る）ので長めに数える
+        run_lab_session(src, _session_dir(args.session), steps, expect=args.expect, lead=5)
     finally:
         src.close()
 
@@ -200,10 +200,12 @@ def main(argv=None):
     lb = sub.add_parser("lab")
     lb.add_argument("--session", help="既定は data/raw/<今日の日付>")
     lb.add_argument("--expect", type=int, default=6, help="付けたセンサの本数（足りなければ警告）")
-    lb.add_argument("--trials", type=int, default=3, help="MVC の課題ごとの試行数")
-    lb.add_argument("--rest-between", type=float, default=60.0, help="試行のあいだの休憩 [s]")
+    lb.add_argument("--rounds", type=int, default=2, help="MVC の課題を何周するか（1 周で全課題を 1 回ずつ）")
+    lb.add_argument("--rest-between", type=float, default=10.0,
+                    help="試行のあいだの休憩 [s]。課題を 1 周ずつ回すので、同じ筋は約 1 分空く")
+    lb.add_argument("--wrist-only", action="store_true", help="MVC を手首の 2 課題だけにする")
     lb.add_argument("--long", type=float, default=180.0, help="長い記録の長さ [s]")
-    lb.add_argument("--solo", action="store_true", help="伸展を一人用（H：机の天板の裏を押し上げる）で取る")
+    lb.add_argument("--solo", action="store_true", help="手首を一人用（天板の裏を押し上げる）で取る。本番は押さえてもらう")
     lb.set_defaults(func=cmd_lab)
 
     args = p.parse_args(argv)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import textwrap
 import time
 from pathlib import Path
 
@@ -66,26 +67,46 @@ class LiveView:
     WINDOW_S = 5.0
     RMS_S = 0.1
 
-    def __init__(self, channels, duration: float, cues: list[tuple[float, str]] | None = None):
+    def __init__(self, channels, duration: float, cues: list[tuple[float, str]] | None = None,
+                 pose_panel: bool = False, labels: dict[str, str] | None = None):
+        """pose_panel=True で左に姿勢の図を出す（lab 用）。labels は {チャネル名: 部位名}。"""
         self.channels = [c for c in channels if c.type == "EMG"]
         self.duration = duration
         self.cues = cues or []
+        n = len(self.channels)
         plt.ion()
-        self.fig, axes = plt.subplots(len(self.channels), 1, sharex=True, squeeze=False,
-                                      figsize=(9, 1.6 + 2.2 * len(self.channels)))
-        self.axes = axes[:, 0]
+        if pose_panel:
+            self.fig = plt.figure(figsize=(15, 9))
+            gs = self.fig.add_gridspec(n, 2, width_ratios=(1, 1.25), wspace=0.15)
+            self.pose_ax = self.fig.add_subplot(gs[:, 0])
+            self.pose_ax.set_axis_off()
+            self.axes = [self.fig.add_subplot(gs[i, 1]) for i in range(n)]
+            top = 0.74
+        else:
+            self.fig, axes = plt.subplots(n, 1, sharex=True, squeeze=False, figsize=(9, 1.6 + 2.2 * n))
+            self.pose_ax = None
+            self.axes = list(axes[:, 0])
+            top = 0.86
         self.lines = []
         for ax, c in zip(self.axes, self.channels):
             (line,) = ax.plot([], [], lw=1.5, color="#1A1A1A")
             ax.set_xlim(-self.WINDOW_S, 0)
-            ax.set_ylabel(f"{c.name}\nRMS [μV]")
+            # 部位名は縦書きだと読めないので、グラフの左上に横書きで出す
+            ax.text(0.01, 0.95, (labels or {}).get(c.name, c.name), transform=ax.transAxes, ha="left", va="top",
+                    fontsize=12, fontweight="bold", color="#1A1A1A")
+            ax.set_ylabel("μV", fontsize=9)
+            ax.tick_params(labelsize=8)
+            if ax is not self.axes[-1]:
+                ax.tick_params(labelbottom=False)
             self.lines.append(line)
-        self.axes[-1].set_xlabel("いまからの時間 [s]")
-        self.title = self.fig.suptitle("", fontsize=26, fontweight="bold")
-        self.fig.tight_layout(rect=(0, 0, 1, 0.88))
+        self.axes[-1].set_xlabel("いまからの時間 [s]（直近 5 秒の RMS）")
+        self.title = self.fig.text(0.5, 0.965, "", ha="center", va="top", fontsize=24, fontweight="bold")
+        self.desc = self.fig.text(0.5, 0.895, "", ha="center", va="top", fontsize=14, color="#444444",
+                                  linespacing=1.5)
+        self.fig.subplots_adjust(left=0.04 if pose_panel else 0.12, right=0.98, bottom=0.07, top=top,
+                                 hspace=0.25)
         plt.show(block=False)
         self._bring_to_front()
-
     def _bring_to_front(self) -> None:
         """ターミナルの裏に隠れないよう、窓を最前面に固定する（Qt のときだけ。ほかは何もしない）。"""
         try:
@@ -108,15 +129,21 @@ class LiveView:
     def countdown(self, seconds: int) -> None:
         for k in range(seconds, 0, -1):
             first = self._cue(0.0)
-            self.title.set_text(f"あと {k} 秒で開始" + (f"（最初は「{first}」）" if first else ""))
+            self.title.set_text(f"あと {k} 秒" + (f"　最初は「{first}」" if first else ""))
             self._refresh(1.0)
 
-    def phase(self, duration: float, cues: list[tuple[float, str]] | None = None) -> None:
-        """同じ窓のまま、次の記録に切り替える（グラフを空にする）。"""
+    def phase(self, duration: float, cues: list[tuple[float, str]] | None = None,
+              pose: str = "", desc: str = "") -> None:
+        """同じ窓のまま、次の記録に切り替える（グラフを空にし、姿勢の図と説明を差し替える）。"""
         self.duration = duration
         self.cues = cues or []
         for line in self.lines:
             line.set_data([], [])
+        # 日本語は空白で切れないので、文字数で折り返す（あふれて読めなかった、10-20）
+        self.desc.set_text("\n".join(w for part in desc.split("\n") for w in (textwrap.wrap(part, 40) or [""])))
+        if self.pose_ax is not None:
+            from .poses import draw
+            draw(self.pose_ax, pose)
 
     def wait_click(self, text: str) -> None:
         """窓をクリックするかキーを押すまで待つ。ターミナルに戻らなくても進められる。"""

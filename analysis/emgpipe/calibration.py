@@ -30,21 +30,35 @@ from .recording import Recording, record
 from .sources import ChannelInfo, Source
 
 MVC_TASKS = {
-    # 10-06 の比較で決めたやり方（docs/progress/2026-10-08.md）。伸展は B（= ext_fist_pron）
-    "wrist_extension": "手首の伸展（B）。腕を机に乗せ、手のひら下・握る。手の甲を上から押さえてもらい、全力で反らす",
-    "wrist_flexion": "手首の屈曲。腕を机に乗せ、手のひら下。机に向かって全力で押し下げる",
+    "wrist_extension": "手首の伸展（手の甲を上に反らす）。手の甲を押さえてもらい、全力で押し返す",
+    "wrist_flexion": "手首の屈曲。腕を机に乗せ、手のひら下。机に向かって全力で押し下げる（10-20 に一人で試した）",
     "grip": "グリップ。握力計かタオルを全力で握る",
     # 伸展の MVC の取り方を比べる候補（docs/lab/mvc_trial.md、literature/notes/MVC_protocols.md）
     "ext_self": "【前回のやり方】手のひら下・握る。反対の手で手の甲を押さえ、全力で反らす",
-    "ext_fist_pron": "手のひら下・握る。手の甲を押さえてもらい、全力で反らす",
+    "ext_fist_pron": "手のひら下・握る。前腕を机に乗せ、こぶしを上から押さえてもらい、全力で上に反らす（B。本番）",
     "ext_fist_neut": "親指が上・握る。手の甲を押さえてもらい、全力で反らす（Forman 2019 の ECR）",
     "ext_ulnar_neut": "親指が上・握る。手の甲の小指側を押さえてもらい、反らしながら小指側へ（Forman 2019 の ECU）",
     "ext_open_neut": "親指が上・手を半分開き、相手に手を包んでもらう。反らしながら全力で手を開く（Forman 2019 の ED）",
     "ext_radial_pron": "手のひら下・握る。手の甲の親指側を押さえてもらい、反らしながら親指側へ（Lacelle 2025 の ECR）",
     "ext_open_pron": "手のひら下・手を開く。指の付け根より先を押さえてもらい、全力で反らす（Lacelle 2025 の ED）",
     "ext_fixed_solo": "【一人用】手のひら下・握る。机の天板の裏に手の甲を当て、全力で押し上げる。反対の手は机の上",
-    "flex_fist_sup": "手のひら上・握る。手のひらを押さえてもらい、全力で曲げる（Forman 2019 の FCR）",
+    "flex_fist_sup": "手のひら上・握る。前腕を机に乗せ、こぶしを上から押さえてもらい、全力で上に曲げる（I。本番）",
     "flex_grip_sup": "手のひら上・相手の手を握る。全力で握りながら曲げる（Forman 2019 の FDS）",
+    # 10-20 に決めた。手首はどちらも「上に全力で曲げ、人に押さえてもらう」が本番。一人で試すときは天板の裏
+    "flex_fixed_solo": "【一人用】手のひら上・握る。天板の裏にこぶしを当て、全力で上に曲げる。反対の手は机の上",
+    # 前腕以外（M1-4）。まず一人でできる形で試す
+    "shoulder_abduction_solo": "【一人用】壁の横に立ち、腕は下ろしたまま、肘の外側を壁に当てて全力で横に押す",
+    "elbow_flexion_solo": "【一人用】座って肘を 90° に曲げ、手のひら上。天板の裏に手のひらを当てて全力で持ち上げる",
+    "elbow_extension_solo": "【一人用】座って肘を 90° に曲げ、こぶしの小指側を机に置いて全力で押し下げる",
+    "shoulder_shrug_solo": "【一人用】椅子に座り、両手で座面の端を下から握る。全力で肩をすくめる",
+}
+# 一覧の左に出す短い名前
+TASK_TITLES = {
+    "ext_fist_pron": "手首の伸展", "flex_fist_sup": "手首の屈曲",
+    "ext_fixed_solo": "手首の伸展（一人）", "flex_fixed_solo": "手首の屈曲（一人）",
+    "wrist_flexion": "手首の屈曲（押し下げ）",
+    "shoulder_abduction_solo": "肩の外転（三角筋）", "elbow_flexion_solo": "肘の屈曲（二頭筋）",
+    "elbow_extension_solo": "肘の伸展（三頭筋）", "shoulder_shrug_solo": "肩のすくめ（僧帽筋）",
 }
 DEFAULT_TASKS = ("wrist_extension", "wrist_flexion")
 
