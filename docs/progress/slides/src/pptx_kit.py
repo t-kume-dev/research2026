@@ -231,10 +231,14 @@ def bullets(slide, x, y, w, h, items, size=46, gap=20):
     textbox(slide, x, y, w, h, [P("・" + t, size, True, spacing=1.3, after=gap) for t in items])
 
 
-def roadmap(slide, now, page):
-    """マイルストーンを横に並べ、now 番目（0 始まり）に「今ここ」を付ける。表紙の次に置く。"""
+def roadmap(slide, now, page, steps=None):
+    """マイルストーンを横に並べ、now 番目（0 始まり）に「今ここ」を付ける。表紙の次に置く。
+
+    steps は今のマイルストーンの内訳 [(番号, 内容, 目安, 状態)]。状態は "済"・"今週"・"未"
+    （docs/milestones.md の表と同じ）。渡すと下の箱が内訳の一覧になる。
+    """
     title(slide, "マイルストーン", page)
-    y, d, lw = 440, 56, 230  # 線の高さ、丸の直径、ラベルの幅
+    y, d, lw = (390 if steps else 440), 56, 230  # 線の高さ、丸の直径、ラベルの幅
     xs = [210 + i * 236 for i in range(6)] + [1700]
     line(slide, xs[0], y, xs[5], y, RULE, 4)
     line(slide, xs[5], y, xs[6], y, RULE, 4, dash=True)
@@ -254,9 +258,23 @@ def roadmap(slide, now, page):
             P(name, 28, True, color, align=PP_ALIGN.CENTER, spacing=1.15, after=6),
             P(due, 24, color=GRAY, align=PP_ALIGN.CENTER)])
     key, name, due, done_when = MILESTONES[now]
-    box(slide, 116, 680, 1676, 130, fill=PALE_BLUE, radius=12, anchor=MSO_ANCHOR.MIDDLE, pad=(0, 40, 0, 40),
-        paras=[P(f"{key}　{name.replace(chr(10), '')}（〜{due}）", 34, True, NAVY, after=6),
-               P("完了基準：" + done_when, 28, color=INK)])
+    head = f"{key}　{name.replace(chr(10), '')}（〜{due}）"
+    if not steps:
+        box(slide, 116, 680, 1676, 130, fill=PALE_BLUE, radius=12, anchor=MSO_ANCHOR.MIDDLE, pad=(0, 40, 0, 40),
+            paras=[P(head, 34, True, NAVY, after=6), P("完了基準：" + done_when, 28, color=INK)])
+        return
+    top, rh = 620, 62
+    box(slide, 116, top, 1676, 90 + rh * len(steps), fill=PALE_BLUE, radius=12)
+    textbox(slide, 156, top + 22, 1596, 50, [P(head + "の内訳", 32, True, NAVY)])
+    for i, (k, text, when, state) in enumerate(steps):
+        ry = top + 80 + i * rh
+        fill, edge, ink = {"済": (BLUE, None, "FFFFFF"), "今週": ("FFFFFF", BLUE, BLUE)}.get(state, ("FFFFFF", RULE, GRAY))
+        box(slide, 156, ry + 9, 96, 44, fill=fill, line=edge, line_w=2, radius=22,
+            anchor=MSO_ANCHOR.MIDDLE, paras=[P(state, 22, True, ink, align=PP_ALIGN.CENTER)])
+        textbox(slide, 280, ry, 1220, rh, [dict(runs=[(k + "　", 28, True, GRAY), (text, 28, True, INK)])],
+                anchor=MSO_ANCHOR.MIDDLE)
+        textbox(slide, 1500, ry, 252, rh, [P(when, 26, color=GRAY, align=PP_ALIGN.RIGHT)],
+                anchor=MSO_ANCHOR.MIDDLE)
 
 
 def takeaway(slide, text, color=INK):

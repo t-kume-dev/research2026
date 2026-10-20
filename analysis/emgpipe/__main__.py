@@ -8,6 +8,8 @@
   normalize   記録を calibration.json で正規化する
   plot        記録（生 / 正規化済み）を表示する
   import-csv  Trigno Discover の CSV をまとめて .npz に変換する（API キーがないときの代わり）
+  lab         研究室での 1 回ぶん（信号確認 → 安静 → 確認動作 → MVC → 長い記録）を通しで流す
+  pair        センサを 1 本ずつ、決めた番号（シールの番号）でペアリングし直す
 
 --source sim を付けると疑似信号で動く（既定は delsys = 実機）。
 """
@@ -30,12 +32,13 @@ RAW_DIR = REPO_ROOT / "data" / "raw"
 def _session_dir(arg: str | None) -> Path:
     if arg:
         p = Path(arg)
-        return p if p.is_absolute() or p.exists() else RAW_DIR / arg
+        # "2026-10-22" のような名前だけなら data/raw/ の下、"../data/raw/..." のようなパスならそのまま
+        return p.resolve() if p.is_absolute() or len(p.parts) > 1 or p.exists() else RAW_DIR / arg
     return RAW_DIR / datetime.now().strftime("%Y-%m-%d")
 
 
 def _open(args):
-    kw = {"realtime": True, "seed": args.seed} if args.source == "sim" else {"emg_only": not args.all_channels}
+    kw = {"realtime": True, "seed": args.seed, "n_channels": args.sim_channels} if args.source == "sim" else {"emg_only": not args.all_channels}
     src = make_source(args.source, **kw)
     src.connect()
     return src
@@ -113,11 +116,35 @@ def cmd_plot(args):
     plot_file(Path(args.file), out=Path(args.out) if args.out else None)
 
 
+def cmd_pair(args):
+    from .sources import DelsysSource
+    src = DelsysSource()
+    for n in args.numbers:
+        input(f"\nシール {n} のセンサだけを手に取り、Enter を押したら、すぐ基地局に当てる（{args.timeout:.0f} 秒待つ） > ")
+        ok = src.pair(n, args.timeout)
+        print(f"  シール {n} → 登録番号 {n}: " + ("できた" if ok else "できなかった（時間切れか失敗。もう一度流す）"))
+    src.close()
+    print("\n確認: python -m emgpipe devices で、番号がシールと同じになっているか見る")
+
+
+def cmd_lab(args):
+    from .session import build_steps, run_lab_session
+    src = _open(args)
+    steps = build_steps("ext_fixed_solo" if args.solo else "wrist_extension", "wrist_flexion",
+                        args.trials, args.rest_between, args.long)
+    try:
+        # 一人用は、クリックしてから手を天板の裏に入れるので長めに数える
+        run_lab_session(src, _session_dir(args.session), steps, expect=args.expect, lead=5 if args.solo else 3)
+    finally:
+        src.close()
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="emgpipe")
     p.add_argument("--source", choices=["delsys", "sim"], default="delsys")
     p.add_argument("--seed", type=int, default=None, help="疑似信号の乱数シード")
     p.add_argument("--all-channels", action="store_true", help="EMG 以外（IMU など）も記録する")
+    p.add_argument("--sim-channels", type=int, default=2, help="疑似信号のチャネル数")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("devices").set_defaults(func=cmd_devices)
@@ -164,6 +191,20 @@ def main(argv=None):
     pl.add_argument("file")
     pl.add_argument("--out", help="画像に保存する場合のパス")
     pl.set_defaults(func=cmd_plot)
+
+    pr = sub.add_parser("pair")
+    pr.add_argument("numbers", type=int, nargs="+", help="登録する番号（シールの番号）。1 本ずつ順に")
+    pr.add_argument("--timeout", type=float, default=60.0, help="1 本あたり待つ秒数")
+    pr.set_defaults(func=cmd_pair)
+
+    lb = sub.add_parser("lab")
+    lb.add_argument("--session", help="既定は data/raw/<今日の日付>")
+    lb.add_argument("--expect", type=int, default=6, help="付けたセンサの本数（足りなければ警告）")
+    lb.add_argument("--trials", type=int, default=3, help="MVC の課題ごとの試行数")
+    lb.add_argument("--rest-between", type=float, default=60.0, help="試行のあいだの休憩 [s]")
+    lb.add_argument("--long", type=float, default=180.0, help="長い記録の長さ [s]")
+    lb.add_argument("--solo", action="store_true", help="伸展を一人用（H：机の天板の裏を押し上げる）で取る")
+    lb.set_defaults(func=cmd_lab)
 
     args = p.parse_args(argv)
     args.func(args)

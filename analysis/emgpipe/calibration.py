@@ -30,8 +30,9 @@ from .recording import Recording, record
 from .sources import ChannelInfo, Source
 
 MVC_TASKS = {
-    "wrist_extension": "手首の伸展（手の甲を上に反らす）。手の甲を押さえてもらい、全力で押し返す",
-    "wrist_flexion": "手首の屈曲（手のひら側に曲げる）。手のひらを押さえてもらい、全力で押し返す",
+    # 10-06 の比較で決めたやり方（docs/progress/2026-10-08.md）。伸展は B（= ext_fist_pron）
+    "wrist_extension": "手首の伸展（B）。腕を机に乗せ、手のひら下・握る。手の甲を上から押さえてもらい、全力で反らす",
+    "wrist_flexion": "手首の屈曲。腕を机に乗せ、手のひら下。机に向かって全力で押し下げる",
     "grip": "グリップ。握力計かタオルを全力で握る",
     # 伸展の MVC の取り方を比べる候補（docs/lab/mvc_trial.md、literature/notes/MVC_protocols.md）
     "ext_self": "【前回のやり方】手のひら下・握る。反対の手で手の甲を押さえ、全力で反らす",

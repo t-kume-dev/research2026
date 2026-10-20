@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -110,11 +111,38 @@ class LiveView:
             self.title.set_text(f"あと {k} 秒で開始" + (f"（最初は「{first}」）" if first else ""))
             self._refresh(1.0)
 
+    def phase(self, duration: float, cues: list[tuple[float, str]] | None = None) -> None:
+        """同じ窓のまま、次の記録に切り替える（グラフを空にする）。"""
+        self.duration = duration
+        self.cues = cues or []
+        for line in self.lines:
+            line.set_data([], [])
+
+    def wait_click(self, text: str) -> None:
+        """窓をクリックするかキーを押すまで待つ。ターミナルに戻らなくても進められる。"""
+        self.title.set_text(text)
+        self._refresh(0.01)
+        while self.fig.waitforbuttonpress(timeout=-1) is None:
+            pass
+
+    def rest(self, seconds: float, text: str = "休憩") -> None:
+        end = time.perf_counter() + seconds
+        while (left := end - time.perf_counter()) > 0:
+            self.title.set_text(f"{text}　残り {left:3.0f} 秒")
+            self._refresh(min(1.0, left))
+
     def update(self, buf: dict[str, list[np.ndarray]], elapsed: float) -> None:
         for ax, line, c in zip(self.axes, self.lines, self.channels):
             n_win = max(1, int(round(self.RMS_S * c.fs)))
             n_keep = int(self.WINDOW_S * c.fs) // n_win * n_win
-            x = np.concatenate(buf[c.name]) if buf[c.name] else np.zeros(0)
+            # 長い記録でも重くならないよう、後ろから直近 5 秒ぶんの塊だけつなぐ
+            tail, n = [], 0
+            for chunk in reversed(buf[c.name]):
+                tail.append(chunk)
+                n += chunk.size
+                if n >= n_keep:
+                    break
+            x = np.concatenate(tail[::-1]) if tail else np.zeros(0)
             x = x[-n_keep:]
             x = x[: x.size // n_win * n_win]
             if not x.size:

@@ -58,6 +58,9 @@ _SIM_ACTIVATION = {
     "wrist_extension": (1.0, 0.30),
     "wrist_flexion": (0.25, 1.0),
     "grip": (0.7, 0.8),
+    "ext_fixed_solo": (0.95, 0.30),
+    "free_extension": (0.8, 0.25),
+    "free_flexion": (0.2, 0.8),
 }
 
 
@@ -194,7 +197,7 @@ class DelsysSource(Source):
         self.channels = []
         self.base = None
 
-    def connect(self) -> None:
+    def _open_base(self) -> None:
         if not self.dll_path.exists():
             raise RuntimeError(f"DelsysAPI.dll が見つかりません: {self.dll_path}")
         from pythonnet import load
@@ -209,6 +212,18 @@ class DelsysSource(Source):
         self.base.ValidateBase(key, lic)
         print(f"受信機: {self.base.GetTrignoReceiverType()}")
 
+    def pair(self, number: int, timeout_s: float = 60.0) -> bool:
+        """センサを 1 本、登録番号 number で基地局にペアリングし直す。待っているあいだにセンサを基地局に当てる。"""
+        if self.base is None:
+            self._open_base()
+        task = self.base.PairSensor(number)
+        if not task.Wait(int(timeout_s * 1000)):
+            self.base.CancelPair()
+            return False
+        return bool(task.Result)
+
+    def connect(self) -> None:
+        self._open_base()
         self._scan()
         self.base.SelectAllSensors()
         self.channels = self._list_channels()
