@@ -231,20 +231,18 @@ def bullets(slide, x, y, w, h, items, size=46, gap=20):
     textbox(slide, x, y, w, h, [P("・" + t, size, True, spacing=1.3, after=gap) for t in items])
 
 
-def roadmap(slide, now, page, steps=None):
+def roadmap(slide, now, page, steps=None, this_week=()):
     """マイルストーンを横に並べ、now 番目（0 始まり）に「今ここ」を付ける。表紙の次に置く。
 
-    steps は今のマイルストーンの内訳 [(番号, 内容, 目安, 状態)]。状態は "済"・"今週"・"未"
-    （docs/milestones.md の表と同じ）。渡すと下の箱が内訳の一覧になる。
+    日付（期限・目安）は発表に出さないので描かない。steps は今のマイルストーンの内訳
+    [(番号, 内容, 目安, 状態)] で、始まりから完了基準までの流れ。状態は "済"・"一部済"・"未"
+    （docs/milestones.md の表と同じ）。this_week に入れた番号は「今週」、それより前の済は「先週まで」として描く。
     """
     title(slide, "マイルストーン", page)
-    y, d, lw = (390 if steps else 440), 56, 230  # 線の高さ、丸の直径、ラベルの幅
-    xs = [210 + i * 236 for i in range(6)] + [1700]
-    line(slide, xs[0], y, xs[5], y, RULE, 4)
-    line(slide, xs[5], y, xs[6], y, RULE, 4, dash=True)
-    textbox(slide, xs[5] + 40, y + 20, xs[6] - xs[5] - 80, 50,
-            [P("就活・実験2（任意）", 22, True, GRAY, align=PP_ALIGN.CENTER)])
-    for i, (key, name, due, _) in enumerate(MILESTONES):
+    y, d, lw = (370 if steps else 440), 56, 230  # 線の高さ、丸の直径、ラベルの幅
+    xs = [210 + i * 248 for i in range(len(MILESTONES))]
+    line(slide, xs[0], y, xs[-1], y, RULE, 4)
+    for i, (key, name, _, _) in enumerate(MILESTONES):
         x = xs[i]
         hot, done = i == now, i < now
         box(slide, x - d / 2, y - d / 2, d, d, fill=BLUE if hot else GRAY if done else "FFFFFF",
@@ -254,27 +252,44 @@ def roadmap(slide, now, page, steps=None):
                 paras=[P("今ここ", 24, True, "FFFFFF", align=PP_ALIGN.CENTER)])
         color = BLUE if hot else GRAY if done else INK
         textbox(slide, x - lw / 2, y - 92, lw, 40, [P(key, 30, True, color, align=PP_ALIGN.CENTER)])
-        textbox(slide, x - lw / 2, y + 46, lw, 140, [
-            P(name, 28, True, color, align=PP_ALIGN.CENTER, spacing=1.15, after=6),
-            P(due, 24, color=GRAY, align=PP_ALIGN.CENTER)])
-    key, name, due, done_when = MILESTONES[now]
-    head = f"{key}　{name.replace(chr(10), '')}（〜{due}）"
+        textbox(slide, x - lw / 2, y + 46, lw, 100, [P(name, 28, True, color, align=PP_ALIGN.CENTER, spacing=1.15)])
+    key, name, _, done_when = MILESTONES[now]
+    head = f"{key}　{name.replace(chr(10), '')}"
     if not steps:
         box(slide, 116, 680, 1676, 130, fill=PALE_BLUE, radius=12, anchor=MSO_ANCHOR.MIDDLE, pad=(0, 40, 0, 40),
             paras=[P(head, 34, True, NAVY, after=6), P("完了基準：" + done_when, 28, color=INK)])
         return
-    top, rh = 620, 62
-    box(slide, 116, top, 1676, 90 + rh * len(steps), fill=PALE_BLUE, radius=12)
-    textbox(slide, 156, top + 22, 1596, 50, [P(head + "の内訳", 32, True, NAVY)])
-    for i, (k, text, when, state) in enumerate(steps):
-        ry = top + 80 + i * rh
-        fill, edge, ink = {"済": (BLUE, None, "FFFFFF"), "今週": ("FFFFFF", BLUE, BLUE)}.get(state, ("FFFFFF", RULE, GRAY))
-        box(slide, 156, ry + 9, 96, 44, fill=fill, line=edge, line_w=2, radius=22,
-            anchor=MSO_ANCHOR.MIDDLE, paras=[P(state, 22, True, ink, align=PP_ALIGN.CENTER)])
-        textbox(slide, 280, ry, 1220, rh, [dict(runs=[(k + "　", 28, True, GRAY), (text, 28, True, INK)])],
-                anchor=MSO_ANCHOR.MIDDLE)
-        textbox(slide, 1500, ry, 252, rh, [P(when, 26, color=GRAY, align=PP_ALIGN.RIGHT)],
-                anchor=MSO_ANCHOR.MIDDLE)
+    top = 550
+    box(slide, 116, top, 1676, 420, fill=PALE_BLUE, radius=12)
+    textbox(slide, 156, top + 22, 1596, 50, [P(head + "の内訳（始まりから完了まで）", 32, True, NAVY)])
+    n, gap = len(steps), 26
+    w = (1596 - gap * (n - 1)) / n
+    xs = [156 + i * (w + gap) for i in range(n)]
+    by, bh = top + 150, 230
+    groups = {}  # 「先週まで」「今週」の範囲
+    for i, (k, _, _, state) in enumerate(steps):
+        g = "今週" if k in this_week else "先週まで" if state == "済" else None
+        if g:
+            groups.setdefault(g, []).append(i)
+    for g, idx in groups.items():
+        col = BLUE if g == "今週" else GRAY
+        x1, x2 = xs[idx[0]], xs[idx[-1]] + w
+        line(slide, x1, by - 22, x2, by - 22, col, 3)
+        textbox(slide, x1, by - 70, x2 - x1, 40, [P(g, 24, True, col, align=PP_ALIGN.CENTER)])
+    for i, (k, text, _, state) in enumerate(steps):
+        x, now_ = xs[i], k in this_week
+        if now_:
+            fill, edge, ink, sub = (BLUE, None, "FFFFFF", "D6E6F5") if state == "済" else (PALE_BLUE, BLUE, INK, BLUE)
+        elif state == "済":
+            fill, edge, ink, sub = PALE_GRAY, RULE, GRAY, GRAY
+        else:
+            fill, edge, ink, sub = "FFFFFF", RULE, INK, GRAY
+        box(slide, x, by, w, bh, fill=fill, line=edge, line_w=2, radius=12, pad=(18, 12, 14, 12), paras=[
+            P(k, 22, True, sub, after=8), P(text, 23, True, ink, spacing=1.2)])
+        label = {"済": "済", "一部済": "一部済"}.get(state, "これから")
+        textbox(slide, x, by + bh - 52, w, 40, [P(label, 24, True, sub, align=PP_ALIGN.CENTER)])
+        if i < n - 1:
+            line(slide, x + w + 2, by + bh / 2, x + w + gap - 2, by + bh / 2, GRAY, 3, head="end")
 
 
 def takeaway(slide, text, color=INK):

@@ -31,7 +31,7 @@ from .sources import Source
 # 手首はどちらも「上に全力で曲げ、人に押さえてもらう」が本番。一人で試すときは天板の裏（10-20 に決めた）
 WRIST_TASKS = ("ext_fist_pron", "flex_fist_sup")
 WRIST_TASKS_SOLO = ("ext_fixed_solo", "flex_fixed_solo")
-# 前腕以外。まず一人でできる形で試す（M1-4）
+# 前腕以外。まず一人でできる形で試す（M1-7）
 OTHER_TASKS = ("shoulder_abduction_solo", "elbow_flexion_solo", "elbow_extension_solo", "shoulder_shrug_solo")
 
 
