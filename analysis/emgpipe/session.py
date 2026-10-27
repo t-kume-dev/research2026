@@ -2,6 +2,7 @@
 
   1. 接続とセンサの本数の確認
   2. 信号の確認（脱力 → 反らす → 脱力）。浮いたセンサ（50 Hz の雑音ばかり）がないか見る
+  2b. 部位の確認。6 か所を 1 つずつ動かし、センサの番号と sensors.json の部位が合っているか見る
   3. 安静 10 秒
   4. 確認動作（手首を上に反らしきる・手のひら上で上に曲げきる、1 回ずつ）。疲れる前に取る
   5. MVC：課題を 1 周ずつ回す（既定 2 周）。同じ筋が続かないので、休憩は短くてよい（既定 10 秒）
@@ -34,6 +35,18 @@ WRIST_TASKS_SOLO = ("ext_fixed_solo", "flex_fixed_solo")
 # 前腕以外。まず一人でできる形で試す（M1-7）
 OTHER_TASKS = ("shoulder_abduction_solo", "elbow_flexion_solo", "elbow_extension_solo", "shoulder_shrug_solo")
 
+# 部位の確認で動かす順番。キーは sensors.json の部位名。MVC の課題は全力なのでほかの部位にも力が入る
+# （10-27 は肩の外転で僧帽筋が最大）。ここは確認動作と同じく、押さえずにその部位だけを動かす
+SITE_MOVES = {
+    "前腕の上（伸筋群）": "手首を反らす",
+    "前腕の下（屈筋群）": "手のひら上で手首を曲げる",
+    "三角筋中部": "腕を横に少し上げて止める（肩はすくめない）",
+    "上腕二頭筋": "手を開いたまま、肘を曲げて力こぶを作る",
+    "上腕三頭筋": "腕を下ろしたまま、肘を伸ばしきって力を入れる",
+    "僧帽筋上部": "腕の力を抜いたまま、肩をすくめる",
+}
+SITE_LEAD, SITE_ON, SITE_OFF = 3.0, 3.0, 1.0   # 最初の脱力、1 動作の長さ、動作のあいだの脱力 [s]
+
 
 @dataclass
 class Step:
@@ -61,6 +74,7 @@ def build_steps(tasks: list[str], rounds: int, rest_between: float, long_s: floa
     steps = [
         Step("signal_check", "", 10, "0:脱力,4:手首を反らす,7:脱力", "信号の確認（10 秒）",
              "脱力 → 手首を反らす → 脱力。浮いたセンサがないかを見る"),
+        site_check_step(),
         Step("rest", "rest", 10, "0:脱力", "安静（10 秒）", "マウスに手を置いたまま、力を抜いて動かない",
              rest_after=5),
         Step("check_free_extension_01", "free_extension", 5, "0:反らしきる", "確認動作：伸展（5 秒）",
@@ -79,13 +93,28 @@ def build_steps(tasks: list[str], rounds: int, rest_between: float, long_s: floa
     return steps
 
 
-def load_labels(session_dir: Path) -> dict[str, str]:
-    """sensors.json（部位 → 番号）から、窓に出す {チャネル名: "S1 部位"} を作る。なければ空。"""
+def site_check_step() -> Step:
+    cues, t = [(0.0, "脱力")], SITE_LEAD
+    for move in SITE_MOVES.values():
+        cues += [(t, move), (t + SITE_ON, "脱力")]
+        t += SITE_ON + SITE_OFF
+    return Step("site_check", "", t, ",".join(f"{a:g}:{b}" for a, b in cues),
+                f"部位の確認（{t:.0f} 秒）", "画面の指示どおりに 1 つずつ動かす。センサの番号と部位が合っているかを見る",
+                rest_after=5)
+
+
+def load_sites(session_dir: Path) -> dict[str, str]:
+    """sensors.json（部位 → 番号）から {チャネル名: 部位} を作る。なければ空。"""
     path = Path(session_dir) / "sensors.json"
     if not path.exists():
         return {}
     table = json.loads(path.read_text(encoding="utf-8"))
-    return {f"S{n}_EMG1": f"S{n} {site}" for site, n in table.items() if n is not None}
+    return {f"S{n}_EMG1": site for site, n in table.items() if n is not None}
+
+
+def load_labels(session_dir: Path) -> dict[str, str]:
+    """窓に出す {チャネル名: "S1 部位"}。"""
+    return {c: f"{c.split('_')[0]} {site}" for c, site in load_sites(session_dir).items()}
 
 def run_lab_session(source: Source, session_dir: Path, steps: list[Step], expect: int = 6,
                     lead: int = 3) -> None:
@@ -102,9 +131,12 @@ def run_lab_session(source: Source, session_dir: Path, steps: list[Step], expect
               "電源が入っているか確認する。このまま続けてもよい")
 
     view = LiveView(source.channels, steps[0].duration, pose_panel=True, labels=load_labels(session_dir))
+    note = ""   # 部位の確認の結果。次の画面に出す
     try:
         for i, st in enumerate(steps, 1):
-            view.phase(st.duration, parse_cues(st.cues), pose=st.task, desc=st.desc + "\n\nクリックで開始")
+            head = note + "\n\n" if note else ""
+            view.phase(st.duration, parse_cues(st.cues), pose=st.task, desc=head + st.desc + "\n\nクリックで開始")
+            note = ""
             view.wait_click(f"[{i}/{len(steps)}] {st.title}")
             view.countdown(lead)
             rec = record(source, st.duration, st.task, on_update=view.update)
@@ -114,11 +146,13 @@ def run_lab_session(source: Source, session_dir: Path, steps: list[Step], expect
             log.write(f"{st.name}\t{st.task}\t{st.duration:g} s\t{short or 'ok'}\n")
             if st.name == "signal_check":
                 _report_signal(rec)
+            elif st.name == "site_check":
+                note = _report_sites(rec, load_sites(session_dir))
             elif st.name.startswith(("mvc_", "check_")):
                 print("  ピーク: " + ", ".join(f"{c}={mvc_level(rec, c) * 1000:.0f} μV" for c in rec.emg_names))
             if st.rest_after > 0 and i < len(steps):
                 nxt = steps[i]
-                view.phase(0, pose=nxt.task, desc="次：" + nxt.title + "\n" + nxt.desc)
+                view.phase(0, pose=nxt.task, desc=(note + "\n\n" if note else "") + "次：" + nxt.title + "\n" + nxt.desc)
                 view.rest(st.rest_after, "休憩")
         view.finish()
     finally:
@@ -154,3 +188,35 @@ def _report_signal(rec: Recording) -> None:
         flag = "  ← 浮いているかも（貼り直す）" if hum > 0.8 else ""
         print(f"  {c:<16}{_rms_uv(relax):8.1f} μV{_rms_uv(act):10.1f} μV{hum * 100:10.0f} %{flag}")
     print("  前腕の伸筋側は、反らすと脱力の数倍になるはず。ほかの部位は変わらなくてよい")
+
+
+def check_sites(rec: Recording, sites: dict[str, str]) -> list[dict]:
+    """センサごとに、どの動作でいちばん反応したか（脱力の何倍か）を調べ、sensors.json の部位と比べる。"""
+    moves = list(SITE_MOVES.items())
+    rows = []
+    for c in rec.emg_names:
+        x, fs = rec.data[c], rec.fs(c)
+        relax = _rms_uv(x[int(0.5 * fs):int((SITE_LEAD - 0.5) * fs)])
+        ratios = []
+        for k in range(len(moves)):
+            t0 = SITE_LEAD + k * (SITE_ON + SITE_OFF)
+            ratios.append(_rms_uv(x[int((t0 + 0.75) * fs):int((t0 + SITE_ON - 0.25) * fs)]) / max(relax, 1e-9))
+        best = int(np.argmax(ratios))
+        site = sites.get(c)
+        rows.append({"channel": c, "site": site, "best_site": moves[best][0], "best_move": moves[best][1],
+                     "ratio": ratios[best], "ok": None if site not in SITE_MOVES else site == moves[best][0]})
+    return rows
+
+
+def _report_sites(rec: Recording, sites: dict[str, str]) -> str:
+    """結果をターミナルに出し、窓に出す 1〜2 行を返す。"""
+    rows = check_sites(rec, sites)
+    print("  チャネル  sensors.json の部位        いちばん反応した動作（脱力の何倍か）")
+    for r in rows:
+        mark = {True: "OK", False: "← 合っていない", None: ""}[r["ok"]]
+        print(f"  {r['channel'][:2]:<8}{(r['site'] or '（なし）'):<20}{r['best_move']}（{r['ratio']:.1f} 倍）  {mark}")
+    bad = [r for r in rows if r["ok"] is False]
+    if not bad:
+        return "部位の確認：OK" if rows and all(r["ok"] for r in rows) else ""
+    print("  合っていないセンサは、貼った位置か sensors.json の番号を確かめる。直したら lab をやり直す")
+    return "部位の確認：" + "、".join(f"{r['channel'][:2]} が「{r['best_site']}」に反応" for r in bad) +         "。貼った位置か sensors.json を確かめる"

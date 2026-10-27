@@ -110,6 +110,31 @@ def _write_discover_csv(path: Path, fs: float, x0: np.ndarray, x3: np.ndarray, m
     path.write_text("\n".join(head + lines) + "\n", encoding="utf-8")
 
 
+class SiteCheckTest(unittest.TestCase):
+    def test_swapped_sensors_are_flagged(self):
+        from emgpipe.session import SITE_LEAD, SITE_MOVES, SITE_OFF, SITE_ON, check_sites, site_check_step
+        from emgpipe.sources import ChannelInfo
+        fs = 2000.0
+        dur = site_check_step().duration
+        rng = np.random.default_rng(0)
+        sites = list(SITE_MOVES)
+        chans, data = [], {}
+        for k in range(6):
+            name = f"S{k + 1}_EMG1"
+            x = 0.002 * rng.standard_normal(int(dur * fs))
+            t0 = SITE_LEAD + k * (SITE_ON + SITE_OFF)   # S(k+1) は k 番目の動作で強く反応する
+            x[int(t0 * fs):int((t0 + SITE_ON) * fs)] *= 20
+            chans.append(ChannelInfo(name, "EMG", fs, name))
+            data[name] = x
+        rec = Recording(chans, data)
+        # sensors.json で S3 と S6 を取り違えた
+        table = {f"S{k + 1}_EMG1": sites[k] for k in range(6)}
+        table["S3_EMG1"], table["S6_EMG1"] = sites[5], sites[2]
+        rows = {r["channel"]: r for r in check_sites(rec, table)}
+        self.assertEqual([c for c, r in rows.items() if not r["ok"]], ["S3_EMG1", "S6_EMG1"])
+        self.assertEqual(rows["S3_EMG1"]["best_site"], "三角筋中部")
+
+
 class DiscoverCsvTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
