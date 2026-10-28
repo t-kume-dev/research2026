@@ -140,6 +140,46 @@ def _shrug(ax):
         _arrow(ax, x - 0.6 * s, ly, 0, 1.2, BLUE)
 
 
+def _free_note(ax, text):
+    _label(ax, 9.9, 1.0, "誰も押さえない", BLUE, 12, ha="right")
+    _label(ax, 9.9, 0.4, text, BLUE, 12, ha="right")
+
+
+def _free_abduction(ax):
+    (lx, ly), (rx, ry) = _person_front(ax)
+    ax.plot([lx, lx - 0.3, lx - 0.3], [ly, ly - 1.7, ly - 3.2], color=SKIN_LINE, lw=6, solid_capstyle="round")
+    ax.plot([rx, rx + 3.0], [ry, ry], color=SKIN_LINE, lw=6, solid_capstyle="round")  # 肩の高さまで上げた腕
+    _arrow(ax, rx + 2.4, ry + 0.2, 0, 1.1, BLUE)
+    _free_note(ax, "腕を横に上げ、全力で上へ")
+
+
+def _free_elbow_flexion(ax):
+    sx, sy = _person_side(ax)
+    ex, ey = sx + 0.2, sy - 2.0
+    ax.plot([sx, ex], [sy, ey], color=SKIN_LINE, lw=6, solid_capstyle="round")              # 上腕
+    ax.plot([ex, ex + 0.9], [ey, ey + 1.9], color=SKIN_LINE, lw=6, solid_capstyle="round")  # 曲げきった前腕
+    ax.add_patch(Circle((ex + 1.0, ey + 2.2), 0.35, fc=SKIN, ec=SKIN_LINE, lw=1.5))
+    _arrow(ax, ex + 1.8, ey + 0.4, 0, 1.4, BLUE)
+    _free_note(ax, "肘を曲げきり、全力で力こぶ")
+
+
+def _free_elbow_extension(ax):
+    sx, sy = _person_side(ax, seated=False)
+    ax.plot([sx, sx + 0.3], [sy, sy - 3.4], color=SKIN_LINE, lw=6, solid_capstyle="round")  # 伸ばしきった腕
+    ax.add_patch(Circle((sx + 0.32, sy - 3.7), 0.35, fc=SKIN, ec=SKIN_LINE, lw=1.5))
+    _arrow(ax, sx + 1.2, sy - 1.6, 0, -1.4, BLUE)
+    _free_note(ax, "肘を伸ばしきり、全力で")
+
+
+def _free_shrug(ax):
+    (lx, ly), (rx, ry) = _person_front(ax)
+    for x, s in ((lx, -1), (rx, 1)):
+        ax.plot([x, x + 0.3 * s, x + 0.3 * s], [ly, ly - 1.7, ly - 3.2], color=SKIN_LINE, lw=6,
+                solid_capstyle="round")
+        _arrow(ax, x - 0.6 * s, ly, 0, 1.2, BLUE)
+    _free_note(ax, "肩を全力ですくめきる")
+
+
 def _rest(ax):
     _desk(ax)
     _forearm(ax, 1.6, "下", fist=False)
@@ -152,6 +192,10 @@ DRAW = {
     "rest": _rest,
     "free_extension": lambda ax: _bend(ax, "下", BLUE),
     "free_flexion": lambda ax: _bend(ax, "上", ORANGE),
+    "free_shoulder_abduction": _free_abduction,
+    "free_elbow_flexion": _free_elbow_flexion,
+    "free_elbow_extension": _free_elbow_extension,
+    "free_shoulder_shrug": _free_shrug,
     "ext_fist_pron": lambda ax: _wrist_press(ax, "下", BLUE, "他の人"),
     "flex_fist_sup": lambda ax: _wrist_press(ax, "上", ORANGE, "他の人"),
     "ext_fixed_solo": lambda ax: _wrist_press(ax, "下", BLUE, "天板"),

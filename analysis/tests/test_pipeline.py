@@ -110,6 +110,20 @@ def _write_discover_csv(path: Path, fs: float, x0: np.ndarray, x3: np.ndarray, m
     path.write_text("\n".join(head + lines) + "\n", encoding="utf-8")
 
 
+class LabStepsTest(unittest.TestCase):
+    def test_checks_cover_all_sites_before_mvc(self):
+        from emgpipe import poses
+        from emgpipe.session import CHECKS, OTHER_TASKS, WRIST_TASKS_SOLO, build_steps
+        steps = build_steps(list(WRIST_TASKS_SOLO + OTHER_TASKS), 2, 10, 180)
+        names = [s.name for s in steps]
+        checks = [n for n in names if n.startswith("check_")]
+        self.assertEqual(len(checks), 6)
+        # 確認動作は、疲れる前（最初の MVC より前）に全部取る
+        self.assertLess(names.index(checks[-1]), min(i for i, n in enumerate(names) if n.startswith("mvc_")))
+        for task, *_ in CHECKS:
+            self.assertIn(task, poses.DRAW)
+
+
 class SiteCheckTest(unittest.TestCase):
     def test_swapped_sensors_are_flagged(self):
         from emgpipe.session import SITE_LEAD, SITE_MOVES, SITE_OFF, SITE_ON, check_sites, site_check_step

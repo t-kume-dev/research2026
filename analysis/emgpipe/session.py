@@ -4,7 +4,7 @@
   2. 信号の確認（脱力 → 反らす → 脱力）。浮いたセンサ（50 Hz の雑音ばかり）がないか見る
   2b. 部位の確認。6 か所を 1 つずつ動かし、センサの番号と sensors.json の部位が合っているか見る
   3. 安静 10 秒
-  4. 確認動作（手首を上に反らしきる・手のひら上で上に曲げきる、1 回ずつ）。疲れる前に取る
+  4. 確認動作（6 か所を 1 つずつ、誰も押さえずに全力で、1 回ずつ）。疲れる前に取る
   5. MVC：課題を 1 周ずつ回す（既定 2 周）。同じ筋が続かないので、休憩は短くてよい（既定 10 秒）
   6. 長い記録（既定 180 秒）。マウスを自由に動かす
   7. MVC の比べ（mvc_compare.csv）と calibration.json を出す
@@ -47,6 +47,18 @@ SITE_MOVES = {
 }
 SITE_LEAD, SITE_ON, SITE_OFF = 3.0, 3.0, 1.0   # 最初の脱力、1 動作の長さ、動作のあいだの脱力 [s]
 
+# 確認動作：誰も押さえずに全力。これが MVC の 100% 以下なら、MVC の課題が全力を捉えている。
+# 10-27 までは手首の 2 つだけで、前腕以外は確かめられていなかった（10-28 に足した）
+CHECKS = (
+    ("free_extension", "伸展", "反らしきる", "手のひら下。誰も押さえず、手首を上に全力で反らしきる"),
+    ("free_flexion", "屈曲", "曲げきる", "手のひら上。誰も押さえず、手首を上に全力で曲げきる"),
+    ("free_shoulder_abduction", "肩の外転", "全力で横へ",
+     "腕を横に肩の高さまで上げ、誰も押さえず、さらに上へ全力で力を入れる（肩はすくめない）"),
+    ("free_elbow_flexion", "肘の屈曲", "全力で力こぶ", "こぶしを握って肘を曲げきり、誰も押さえず、力こぶに全力で力を入れる"),
+    ("free_elbow_extension", "肘の伸展", "全力で伸ばす", "腕を下ろしたまま肘を伸ばしきり、誰も押さえず、全力で力を入れる"),
+    ("free_shoulder_shrug", "肩のすくめ", "すくめきる", "腕の力を抜いたまま、誰も押さえず、肩を全力ですくめきる"),
+)
+
 
 @dataclass
 class Step:
@@ -77,11 +89,10 @@ def build_steps(tasks: list[str], rounds: int, rest_between: float, long_s: floa
         site_check_step(),
         Step("rest", "rest", 10, "0:脱力", "安静（10 秒）", "マウスに手を置いたまま、力を抜いて動かない",
              rest_after=5),
-        Step("check_free_extension_01", "free_extension", 5, "0:反らしきる", "確認動作：伸展（5 秒）",
-             "手のひら下。誰も押さえず、手首を上に全力で反らしきる", rest_after=rest_between),
-        Step("check_free_flexion_01", "free_flexion", 5, "0:曲げきる", "確認動作：屈曲（5 秒）",
-             "手のひら上。誰も押さえず、手首を上に全力で曲げきる", rest_after=switch_rest),
     ]
+    steps += [Step(f"check_{task}_01", task, 5, f"0:{cue}", f"確認動作：{head}（5 秒）", desc, rest_after=rest_between)
+              for task, head, cue, desc in CHECKS]
+    steps[-1].rest_after = switch_rest
     for r in range(1, rounds + 1):
         for task in tasks:
             steps.append(Step(f"mvc_{task}_{r:02d}", task, 5, "0:全力",
