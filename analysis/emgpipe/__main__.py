@@ -6,6 +6,7 @@
   recalib     記録済みのセッションから calibration.json を作り直す
   mvc-compare MVC の課題ごとの大きさと、確認動作（check_*）が何 %MVC になるかを比べる
   normalize   記録を calibration.json で正規化する
+  long-stats  長い記録の %MVC の平均・上位 5%・最大を出す（10-29 の報告の表の確かめ）
   plot        記録（生 / 正規化済み）を表示する
   import-csv  Trigno Discover の CSV をまとめて .npz に変換する（API キーがないときの代わり）
   lab         研究室での 1 回ぶん（信号確認 → 安静 → 確認動作 → MVC → 長い記録）を通しで流す
@@ -104,6 +105,26 @@ def cmd_normalize(args):
     print(f"保存: {path}")
 
 
+def cmd_long_stats(args):
+    """上位 5% は 10-27 にその場で計算した値で、包絡線のどの段階で取ったかが残っていない。両方を並べて出す。"""
+    import numpy as np
+    from . import processing as proc
+    out_dir = _session_dir(args.session)
+    calib = Calibration.load(out_dir / "calibration.json")
+    rec = Recording.load(out_dir / f"{args.name}.npz")
+    print(f"{args.name}.npz を calibration.json の MVC で割った %MVC（安静は引かない）")
+    print(f"  {'チャネル':<12}{'平均':>8}{'上位5%(包絡線)':>16}{'上位5%(0.5秒平均)':>18}{'最大(0.5秒平均)':>16}{'安静':>8}")
+    for name in rec.emg_names:
+        if name not in calib.mvc:
+            continue
+        fs, m = rec.fs(name), calib.mvc[name]
+        env = proc.envelope(rec.data[name], fs) / m * 100
+        avg = proc.moving_mean(env, fs, proc.MVC_WINDOW_S)
+        print(f"  {name:<12}{env.mean():8.0f}{np.percentile(env, 95):16.0f}{np.percentile(avg, 95):18.0f}"
+              f"{avg.max():16.0f}{calib.rest[name] / m * 100:8.0f}")
+    print("上位 5%：大きい順に並べて上から 5% のところの値（3 分なら、これを超えていたのは合わせて約 9 秒）")
+
+
 def cmd_import_csv(args):
     from .discover_csv import import_dir
     out_dir = _session_dir(args.session)
@@ -181,6 +202,11 @@ def main(argv=None):
     n.add_argument("file")
     n.add_argument("--calib", help="既定は同じディレクトリの calibration.json")
     n.set_defaults(func=cmd_normalize)
+
+    ls = sub.add_parser("long-stats")
+    ls.add_argument("--session", required=True)
+    ls.add_argument("--name", default="long_free", help="長い記録のファイル名（拡張子なし）")
+    ls.set_defaults(func=cmd_long_stats)
 
     ic = sub.add_parser("import-csv")
     ic.add_argument("session", help="CSV が入ったフォルダ（セッション名かパス）")
