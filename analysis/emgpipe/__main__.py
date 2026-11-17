@@ -12,6 +12,8 @@
   lab         研究室での 1 回ぶん（信号確認 → 安静 → 確認動作 → MVC → 長い記録）を通しで流す
   events      マウスの動きとクリックを時刻付きで記録する（M2-2。EMG なしで動く）
   events-plot 記録したマウスのイベントを図にし、報告レートなどを出す
+  kovaaks     記録の間に遊んだ KovaaK's の結果の CSV を kovaaks/ に取り込み、クリックと突き合わせる
+              （events のあとにも自動で走る）
   pair        センサを 1 本ずつ、決めた番号（シールの番号）でペアリングし直す
 
 --source sim を付けると疑似信号で動く（既定は delsys = 実機）。
@@ -150,6 +152,35 @@ def cmd_events(args):
     print(f"  保存: {path}")
     print_summary(summarize(ev))
     plot_events(ev, path.with_suffix(".png"))
+    if not args.no_kovaaks:
+        _kovaaks(path, args.stats_dir, quiet_if_none=True)
+
+
+def _kovaaks(events_csv: Path, stats_dir_arg: str | None, quiet_if_none: bool = False) -> None:
+    """記録の間に遊んだ KovaaK's の CSV を kovaaks/ に取り込み、クリックと突き合わせる。"""
+    from .events import Events
+    from .kovaaks import align, find_stats_dir, import_runs, parse_stats, print_alignment
+    stats_dir = find_stats_dir(stats_dir_arg)
+    if stats_dir is None:
+        if not quiet_if_none:
+            print("KovaaK's の stats フォルダが見つかりません。--stats-dir で渡してください")
+        return
+    copied, warnings = import_runs(events_csv, stats_dir)
+    if not copied and quiet_if_none:
+        return  # KovaaK's を遊ばなかった記録
+    print("KovaaK's の結果")
+    ev = Events.load(events_csv)
+    t0 = ev.meta["t0_unix"]
+    for p in copied:
+        run = parse_stats(p)
+        print(f"  取り込み: {p}")
+        print_alignment(run, t0, align(t0 + ev.clicks, run))
+    for w in warnings:
+        print(f"  [注意] {w}")
+
+
+def cmd_kovaaks(args):
+    _kovaaks(Path(args.file), args.stats_dir)
 
 
 def cmd_events_plot(args):
@@ -248,12 +279,19 @@ def main(argv=None):
     ev.add_argument("--duration", type=float, default=60.0, help="記録の長さ [s]")
     ev.add_argument("--session", help="既定は data/raw/<今日の日付>")
     ev.add_argument("--name", help="ファイル名（既定は events_<時刻>）")
+    ev.add_argument("--no-kovaaks", action="store_true", help="記録のあとに KovaaK's の結果を取り込まない")
+    ev.add_argument("--stats-dir", help="KovaaK's の stats フォルダ（既定は Steam の置き場所を探す）")
     ev.set_defaults(func=cmd_events)
 
     ep = sub.add_parser("events-plot")
     ep.add_argument("file", help="events で保存した .csv")
     ep.add_argument("--out", help="画像に保存する場合のパス")
     ep.set_defaults(func=cmd_events_plot)
+
+    kv = sub.add_parser("kovaaks")
+    kv.add_argument("file", help="events で保存した .csv")
+    kv.add_argument("--stats-dir", help="KovaaK's の stats フォルダ（既定は Steam の置き場所を探す）")
+    kv.set_defaults(func=cmd_kovaaks)
 
     pr = sub.add_parser("pair")
     pr.add_argument("numbers", type=int, nargs="+", help="登録する番号（シールの番号）。1 本ずつ順に")
