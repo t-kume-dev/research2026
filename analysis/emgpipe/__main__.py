@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -182,6 +183,10 @@ def cmd_lab(args):
 
 
 def main(argv=None):
+    # 画面でなくパイプに出すとき（Claude Code の `!` など）、Windows では cp932 で出て文字化けする。UTF-8 にそろえる
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure") and not stream.isatty():
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(prog="emgpipe")
     p.add_argument("--source", choices=["delsys", "sim"], default="delsys")
     p.add_argument("--seed", type=int, default=None, help="疑似信号の乱数シード")
