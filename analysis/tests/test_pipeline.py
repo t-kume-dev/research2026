@@ -172,5 +172,27 @@ class DiscoverCsvTest(unittest.TestCase):
         self.assertEqual([m["name"] for m in rec.meta["markers"]], ["E1", "E2"])
 
 
+class TestEvents(unittest.TestCase):
+    def test_roundtrip_and_summary(self):
+        """マウスのイベントの保存・読み込みと、報告レートの見積もり（1 ms 間隔なら約 1000 Hz）。"""
+        from emgpipe.events import Events, summarize
+        n = 500
+        t = np.arange(n) * 0.001
+        btn = [""] * n
+        btn[100], btn[150] = "L_down", "L_up"
+        ev = Events(t, np.ones(n, dtype=int), np.zeros(n, dtype=int), btn, np.zeros((n, 2), dtype=int),
+                    {"clock": "time.perf_counter"})
+        with tempfile.TemporaryDirectory() as d:
+            back = Events.load(ev.save(Path(d) / "ev.csv"))
+        self.assertEqual(back.button[100], "L_down")
+        self.assertEqual(back.meta["clock"], "time.perf_counter")
+        self.assertTrue(np.allclose(back.t, t, atol=1e-6))
+        self.assertEqual(back.path[-1, 0], n)
+        s = summarize(back)
+        self.assertEqual(s["n_left_clicks"], 1)
+        self.assertLess(abs(s["rate_hz"] - 1000), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
+

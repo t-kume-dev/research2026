@@ -10,6 +10,8 @@
   plot        記録（生 / 正規化済み）を表示する
   import-csv  Trigno Discover の CSV をまとめて .npz に変換する（API キーがないときの代わり）
   lab         研究室での 1 回ぶん（信号確認 → 安静 → 確認動作 → MVC → 長い記録）を通しで流す
+  events      マウスの動きとクリックを時刻付きで記録する（M2-2。EMG なしで動く）
+  events-plot 記録したマウスのイベントを図にし、報告レートなどを出す
   pair        センサを 1 本ずつ、決めた番号（シールの番号）でペアリングし直す
 
 --source sim を付けると疑似信号で動く（既定は delsys = 実機）。
@@ -137,6 +139,25 @@ def cmd_plot(args):
     plot_file(Path(args.file), out=Path(args.out) if args.out else None)
 
 
+def cmd_events(args):
+    from .events import plot_events, print_summary, record_events, summarize
+    out_dir = _session_dir(args.session)
+    name = args.name or datetime.now().strftime("events_%H%M%S")
+    print(f"マウスを記録します（{args.duration:.0f} 秒。Ctrl+C で早めに止められます）")
+    ev = record_events(args.duration)
+    path = ev.save(out_dir / f"{name}.csv")
+    print(f"  保存: {path}")
+    print_summary(summarize(ev))
+    plot_events(ev, path.with_suffix(".png"))
+
+
+def cmd_events_plot(args):
+    from .events import Events, plot_events, print_summary, summarize
+    ev = Events.load(Path(args.file))
+    print_summary(summarize(ev))
+    plot_events(ev, Path(args.out) if args.out else None)
+
+
 def cmd_pair(args):
     from .sources import DelsysSource
     src = DelsysSource()
@@ -217,6 +238,17 @@ def main(argv=None):
     pl.add_argument("file")
     pl.add_argument("--out", help="画像に保存する場合のパス")
     pl.set_defaults(func=cmd_plot)
+
+    ev = sub.add_parser("events")
+    ev.add_argument("--duration", type=float, default=60.0, help="記録の長さ [s]")
+    ev.add_argument("--session", help="既定は data/raw/<今日の日付>")
+    ev.add_argument("--name", help="ファイル名（既定は events_<時刻>）")
+    ev.set_defaults(func=cmd_events)
+
+    ep = sub.add_parser("events-plot")
+    ep.add_argument("file", help="events で保存した .csv")
+    ep.add_argument("--out", help="画像に保存する場合のパス")
+    ep.set_defaults(func=cmd_events_plot)
 
     pr = sub.add_parser("pair")
     pr.add_argument("numbers", type=int, nargs="+", help="登録する番号（シールの番号）。1 本ずつ順に")
