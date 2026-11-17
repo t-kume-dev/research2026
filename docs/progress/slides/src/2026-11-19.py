@@ -74,7 +74,7 @@ KovaaK's を 5 回（1 回約 60 秒、的が 6 つ出る壁を撃つシナリ�
 """,
     "next": """\n次やることです。M2 の内訳の残り 3 つです。
 
-M2-2「筋電とマウスを同時に記録」：1 つのコマンドで筋電とマウスを同時に取り、KovaaK's の結果も取り込みます。家で疑似信号を使って作ります。
+M2-2「筋電とマウスを同時に記録」：1 つのコマンドで筋電とマウスを同時に取り、KovaaK's の結果も取り込みます。
 
 M2-3「1 回の来室の流れ」：研究室での計測手順の続きに「KovaaK's を 5 回」を入れ、終わったら回ごとのスコアと 6 か所の %MVC を一覧で出します。
 
@@ -163,16 +163,22 @@ textbox(s, 116, 760, 1676, 80, [P("KovaaK's：FPS のエイムを練習するソ
 # 3 やったこと
 s = deck.slide(NOTES["done"])
 title(s, "やったこと", 3)
-bullets(s, 120, 200, 1672, 140, ["マウスの動きとクリックを、時刻付きで記録するツールを作った",
-                                 "KovaaK's を 5 回遊びながら記録し、ゲームの結果と突き合わせた"], size=34, gap=4)
-flow(s, 400, [("1", "マウスを記録\nゲームの裏で", True), ("2", "KovaaK's を\n1 回遊ぶ", False),
-              ("3", "結果の CSV を\n自動でコピー", True), ("4", "クリックと\n結果を突き合わせ", True)],
-     w=380, gap=52, h=200, size=28)
-textbox(s, 116, 640, 1676, 160, [
-    P("時刻は筋電の記録と同じ時計で残す（次の「筋電とマウスを同時に記録」で合わせるため）", 24, color=GRAY, spacing=1.3, after=6),
-    P("結果の CSV は元のファイルを触らずにコピーし、指紋（ハッシュ）も残す。生データを解析の前に手元へ集めるため", 24,
-      color=GRAY, spacing=1.3, after=6),
-    P("マウスの移動量は照準の向き（角度）に直して、動きと撃った場所を図にした", 24, color=GRAY, spacing=1.3)])
+bullets(s, 120, 196, 1672, 130, ["マウスの動きとクリックを、時刻付きで記録するツールを作った",
+                                 "KovaaK's を 5 回遊びながら記録し、ゲームの結果と突き合わせた"], size=32, gap=2)
+picture(s, IMG / "2026-11-19_0_kovaaks.png", 116, 340, w=800)
+textbox(s, 116, 796, 800, 40, [P("KovaaK's のプレイ中の画面：壁に出る赤い的を撃つ（同時に 6 つ、約 60 秒）", 20, color=GRAY)])
+steps3 = [("1", "マウスを記録", "ゲームの裏で。時刻は筋電の記録と同じ時計", True),
+          ("2", "KovaaK's を 1 回遊ぶ", "終わると結果が CSV に残る", False),
+          ("3", "結果の CSV を自動でコピー", "元のファイルは触らず、指紋（ハッシュ）も残す", True),
+          ("4", "クリックと結果を突き合わせ", "撃った数と、倒した時刻を比べる", True)]
+for i, (k, head, sub, hot) in enumerate(steps3):
+    y = 340 + i * 124
+    box(s, 960, y, 832, 96, fill=PALE_BLUE if hot else PALE_GRAY, line=BLUE if hot else RULE, radius=12,
+        anchor=MSO_ANCHOR.MIDDLE, pad=(8, 24, 8, 24), paras=[
+            dict(runs=[(k + "　", 24, True, BLUE if hot else GRAY), (head, 28, True, INK)], after=2),
+            P(sub, 21, color=GRAY)])
+    if i < len(steps3) - 1:
+        line(s, 1376, y + 98, 1376, y + 122, GRAY, 3, head="end")
 
 # 4 時刻がそろった
 s = deck.slide(NOTES["align"])
@@ -218,15 +224,15 @@ takeaway(s, "3 回目は倒した数が増えても、外しが増えてスコ�
 # 9 次やること
 s = deck.slide(NOTES["next"])
 title(s, "次やること", 9)
-for i, (k, head, sub, place) in enumerate([
-        ("M2-2", "筋電とマウスを同時に記録", "1 つの操作で両方を取る。ゲームの結果も取り込む", "家で、疑似信号を使って"),
-        ("M2-3", "1 回の来室の流れ", "計測の手順の続きに KovaaK's 5 回を入れ、回ごとのスコアと %MVC を一覧で出す", "家で、疑似信号を使って"),
-        ("M2-4", "最初の本番", "研究室で通す。プレイ中に 100 %MVC を超えないか、センサが邪魔にならないか", "研究室で")]):
+for i, (k, head, sub) in enumerate([
+        ("M2-2", "筋電とマウスを同時に記録", "1 つの操作で両方を取る。ゲームの結果も取り込む"),
+        ("M2-3", "1 回の来室の流れ", "計測の手順の続きに KovaaK's 5 回を入れ、回ごとのスコアと %MVC を一覧で出す"),
+        ("M2-4", "最初の本番", "研究室で通す。プレイ中に 100 %MVC を超えないか、センサが邪魔にならないか")]):
     x = 116 + i * 572
     box(s, x, 210, 532, 440, fill=PALE_BLUE if i == 0 else PALE_GRAY, line=BLUE if i == 0 else None, line_w=2,
         radius=12, pad=(28, 28, 28, 28), paras=[
             P(k, 24, True, BLUE if i == 0 else GRAY, after=6), P(head, 32, True, after=18),
-            P(sub, 26, color=INK, spacing=1.4, after=18), P(place, 22, True, GRAY)])
+            P(sub, 26, color=INK, spacing=1.4)])
     if i < 2:
         line(s, x + 536, 430, x + 568, 430, GRAY, 4, head="end")
 box(s, 116, 680, 1676, 110, fill="FFFFFF", line=RULE, radius=12, anchor=MSO_ANCHOR.MIDDLE, pad=(0, 32, 0, 32), paras=[
