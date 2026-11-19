@@ -44,6 +44,13 @@ PC を移るとチャットが消える。会話の最初に `docs/claude-notes/
   `roadmap()` のページを 1 枚入れる。説明はしない前提なので、ノートは 1〜2 文でよい
 - マイルストーンと内訳の日付（期限・目安）は、発表のスライドには出さない
 
+### 先生に見せるトラッカーは写し
+
+- 管理するのは `docs/milestones.md` だけ。マイルストーンを変えるときは、いつもこちらを直す
+- `docs/tracker/` のトラッカー（研究室の雛形の pptx、月ごと）は、先生に見せるための写し。
+  出す前に `milestones.md` を見て `docs/tracker/thesis-tracker.md` を合わせ、`python docs/tracker/make_tracker.py` で作り直す。
+  トラッカーで変えたことを `milestones.md` に戻すことはしない
+
 ## 成果報告
 
 - ファイル名は発表する木曜日の日付。その週にやったことだけを書く
