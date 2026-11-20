@@ -44,3 +44,6 @@ venv/
 [Ll]ogs/
 *.csproj
 *.sln
+
+# --- トラッカーのページの画像（毎週の報告に貼る用。作り直せる） ---
+docs/tracker/png/

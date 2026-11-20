@@ -31,7 +31,7 @@ __all__ = [
     "REPO", "SLIDES_DIR", "INK", "GRAY", "RULE", "BLUE", "NAVY", "ORANGE", "ORANGE_TXT",
     "PALE_BLUE", "PALE_ORANGE", "PALE_GRAY", "MSO_ANCHOR", "PP_ALIGN",
     "Deck", "P", "textbox", "box", "line", "freeform", "title", "bullets", "takeaway", "cover",
-    "MILESTONES", "roadmap",
+    "MILESTONES", "roadmap", "tracker_page",
 ]
 
 # docs/milestones.md の一覧と同じもの。あちらを書き換えたらここも合わせる
@@ -231,6 +231,41 @@ def title(slide, text, page):
 
 def bullets(slide, x, y, w, h, items, size=46, gap=20):
     textbox(slide, x, y, w, h, [P("・" + t, size, True, spacing=1.3, after=gap) for t in items])
+
+
+TRACKER_DIR = REPO / "docs/tracker"
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
+          "September", "October", "November", "December"]
+
+
+def tracker_page(slide, when: str):
+    """研究室のトラッカー（docs/tracker/）の、when（"2026-11-26" など）の月のページを、1 枚まるごと貼る。表紙の次に置く。
+
+    先生の希望で、毎週のマイルストーンの共有はこの形にする（11-20）。トラッカーは毎回作り直してから画像にする
+    （PowerPoint で書き出すので Windows のみ）。トラッカーのロゴと重なるので、このページにはページ番号を付けない。
+    """
+    y, m = int(when[:4]), int(when[5:7])
+    subprocess.run([sys.executable, str(TRACKER_DIR / "make_tracker.py")], check=True, capture_output=True)
+    src = TRACKER_DIR / "thesis-tracker.pptx"
+    prs = Presentation(str(src))
+    month = MONTHS[m - 1]
+    hit = None
+    for i, s in enumerate(prs.slides, 1):
+        head = next((sh.text_frame.text for sh in s.shapes if sh.has_text_frame and sh.text_frame.text.strip()), "")
+        if str(y) in head and month in head:
+            hit = i
+            break
+    if hit is None:
+        raise SystemExit(f"トラッカーに {month} {y} のページがありません")
+    png = TRACKER_DIR / "png" / f"{y}-{m:02d}.png"
+    png.parent.mkdir(exist_ok=True)
+    ps = (f"$pp = New-Object -ComObject PowerPoint.Application; "
+          f"$p = $pp.Presentations.Open('{src.resolve()}', $true, $false, $false); "
+          f"$p.Slides.Item({hit}).Export('{png.resolve()}', 'PNG', 3840, 2160); $p.Close(); $pp.Quit()")
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True)
+    if r.returncode != 0 or not png.exists():
+        raise SystemExit("トラッカーのページを画像にできませんでした: " + r.stderr.strip())
+    slide.shapes.add_picture(str(png), 0, 0, px(1920), px(1080))
 
 
 def roadmap(slide, now, page, steps=None, this_week=()):
