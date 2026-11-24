@@ -16,6 +16,9 @@ analysis/delsys_license.json
 analysis/*.key
 analysis/*.lic
 
+# --- OBS の接続設定（パスワードが入る） ---
+analysis/obs.json
+
 # --- 進捗スライドの PDF・画像（pptx から作り直せる。OneNote に貼る用） ---
 docs/progress/slides/pdf/
 

@@ -64,6 +64,7 @@ def record(source: Source, duration: float, task: str = "", progress: bool = Tru
     started = datetime.now().isoformat(timespec="seconds")
     source.start(task)
     t0 = time.perf_counter()
+    t0_wall = time.time()
     last_print = -1
     last_update = 0.0
     try:
@@ -90,4 +91,6 @@ def record(source: Source, duration: float, task: str = "", progress: bool = Tru
 
     data = {n: (np.concatenate(buf[n]) if buf[n] else np.zeros(0))[:target[n]] for n in names}
     return Recording(list(source.channels), data, task,
-                     {"started": started, "duration_s": duration, "source": type(source).__name__})
+                     {"started": started, "duration_s": duration, "source": type(source).__name__,
+                      # マウス（events）と合わせるための開始時刻。最初のサンプルの時刻とみなす（実機の遅れは未確認）
+                      "clock": "time.perf_counter", "t0_perf_counter": t0, "t0_unix": t0_wall})

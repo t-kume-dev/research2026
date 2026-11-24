@@ -98,6 +98,9 @@ def build_steps(tasks: list[str], rounds: int, rest_between: float, long_s: floa
             steps.append(Step(f"mvc_{task}_{r:02d}", task, 5, "0:全力",
                               f"MVC：{TASK_TITLES.get(task, task)}（{r}/{rounds} 周目）",
                               re.sub(r"^【一人用】", "", MVC_TASKS.get(task, "")), rest_after=rest_between))
+    if long_s <= 0:  # 長い記録を取らない（visit は続けて KovaaK's を遊ぶ）
+        steps[-1].rest_after = 0
+        return steps
     steps[-1].rest_after = switch_rest
     steps.append(Step("long_free", "", long_s, "0:マウスを自由に動かす", f"長い記録（{long_s:.0f} 秒）",
                       "マウスを自由に動かす（エイム練習でもよい）"))

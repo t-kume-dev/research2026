@@ -193,6 +193,51 @@ class TestEvents(unittest.TestCase):
         self.assertLess(abs(s["rate_hz"] - 1000), 1)
 
 
+@unittest.skipUnless(sys.platform == "win32", "マウスの記録は Windows だけ")
+class TestPlay(unittest.TestCase):
+    def test_record_play_saves_both_with_offset(self):
+        """筋電とマウスを同時に取り、同じ名前の .npz と .csv に残す。マウスの開始時刻のずれが残る。"""
+        from emgpipe.events import Events
+        from emgpipe.play import record_play, save_play
+        src = SimulatedSource(realtime=True, seed=0)
+        src.connect()
+        rec, ev = record_play(src, 1.0)
+        self.assertEqual(rec.data["S1_EMG1"].size, int(round(src.channels[0].fs * 1.0)))
+        self.assertLess(abs(rec.meta["mouse_offset_s"]), 0.5)
+        self.assertGreater(ev.meta["duration_s"], 0.9)
+        with tempfile.TemporaryDirectory() as d:
+            npz, csv = save_play(rec, ev, Path(d), "p")
+            self.assertEqual(npz.stem, csv.stem)
+            self.assertIn("t0_perf_counter", Recording.load(npz).meta)
+            self.assertIn("emg_t0_perf_counter", Events.load(csv).meta)
+
+    def test_record_play_with_obs(self):
+        """OBS の代わりの偽物で、録画 → 筋電 → 止める の順と、録画ファイルが記録と同じ名前で動くことを確かめる。"""
+        from types import SimpleNamespace
+        from emgpipe.obs import ObsRecorder
+        from emgpipe.play import record_play
+        d = Path(tempfile.mkdtemp())
+        raw = d / "obs_out.mkv"
+
+        class FakeObs:
+            active = False
+            def get_record_status(self):
+                return SimpleNamespace(output_active=self.active)
+            def start_record(self):
+                self.active = True
+            def stop_record(self):
+                self.active = False
+                raw.write_bytes(b"x")
+                return SimpleNamespace(output_path=str(raw))
+
+        src = SimulatedSource(realtime=True, seed=0)
+        src.connect()
+        rec, _ = record_play(src, 0.5, obs=ObsRecorder(FakeObs()), video_dest=d / "sess" / "p_01")
+        self.assertEqual(rec.meta["video"], "p_01.mkv")
+        self.assertTrue((d / "sess" / "p_01.mkv").exists())
+        self.assertLess(rec.meta["video_offset_s"], 0)  # 録画は筋電より前に始まる
+
+
 if __name__ == "__main__":
     unittest.main()
 

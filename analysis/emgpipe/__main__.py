@@ -12,8 +12,10 @@
   lab         研究室での 1 回ぶん（信号確認 → 安静 → 確認動作 → MVC → 長い記録）を通しで流す
   events      マウスの動きとクリックを時刻付きで記録する（M2-2。EMG なしで動く）
   events-plot 記録したマウスのイベントを図にし、報告レートなどを出す
+  play        筋電とマウスを同時に記録し、KovaaK's の結果も取り込む（M2-2）。--obs で画面録画も
   kovaaks     記録の間に遊んだ KovaaK's の結果の CSV を kovaaks/ に取り込み、クリックと突き合わせる
               （events のあとにも自動で走る）
+  visit       1 回の来室（M2-3）：lab の手順 → KovaaK's 5 回（筋電・マウス・画面録画・結果）
   pair        センサを 1 本ずつ、決めた番号（シールの番号）でペアリングし直す
 
 --source sim を付けると疑似信号で動く（既定は delsys = 実機）。
@@ -183,6 +185,66 @@ def cmd_kovaaks(args):
     _kovaaks(Path(args.file), args.stats_dir)
 
 
+def _open_obs(on: bool):
+    if not on:
+        return None
+    from .obs import ObsRecorder
+    return ObsRecorder()  # 筋電につなぐ前に、OBS につながるかを確かめる
+
+
+def _play_runs(src, out_dir: Path, base: str, runs: int, duration: float, task: str, obs,
+               no_kovaaks: bool, stats_dir: str | None, numbered: bool = False) -> None:
+    """KovaaK's を runs 回、筋電・マウス（と録画）を取りながら遊ぶ。回ごとに Enter を待つ。"""
+    from .events import print_summary, summarize
+    from .play import plot_play, record_play, save_play
+    for k in range(1, runs + 1):
+        name = f"{base}_{k:02d}" if numbered or runs > 1 else base
+        if numbered or runs > 1:
+            input(f"\nKovaaK's {k}/{runs} 回目。Enter で記録を始め、KovaaK's を前に出して遊ぶ > ")
+        print(f"筋電とマウスを記録します（{duration:.0f} 秒）。始まったら KovaaK's を遊んでください")
+        rec, ev = record_play(src, duration, task, obs=obs, video_dest=out_dir / name)
+        emg_path, ev_path = save_play(rec, ev, out_dir, name)
+        if obs is not None:
+            print(f"  録画: {rec.meta['video']}（筋電の開始から {-rec.meta['video_offset_s'] * 1000:.0f} ms 前に開始）")
+        print(f"  保存: {emg_path}")
+        print(f"  保存: {ev_path}")
+        print(f"  マウスの開始は筋電の開始から {rec.meta['mouse_offset_s'] * 1000:+.1f} ms")
+        print_summary(summarize(ev))
+        plot_play(rec, ev, emg_path.with_suffix(".png"))
+        print(f"  図: {emg_path.with_suffix('.png')}")
+        if not no_kovaaks:
+            _kovaaks(ev_path, stats_dir, quiet_if_none=True)
+
+
+def cmd_play(args):
+    out_dir = _session_dir(args.session)
+    obs = _open_obs(args.obs)
+    src = _open(args)
+    try:
+        _play_runs(src, out_dir, args.name or datetime.now().strftime("play_%H%M%S"), args.runs, args.duration,
+                   args.task, obs, args.no_kovaaks, args.stats_dir)
+    finally:
+        src.close()
+
+
+def cmd_visit(args):
+    """1 回の来室（M2-3）：lab の手順（信号確認 → 部位 → 安静 → 確認動作 → MVC）→ KovaaK's を runs 回。"""
+    from .session import OTHER_TASKS, WRIST_TASKS, WRIST_TASKS_SOLO, build_steps, run_lab_session
+    out_dir = _session_dir(args.session)
+    obs = _open_obs(not args.no_obs)
+    src = _open(args)
+    tasks = list(WRIST_TASKS_SOLO if args.solo else WRIST_TASKS) + ([] if args.wrist_only else list(OTHER_TASKS))
+    try:
+        if not args.skip_lab:
+            run_lab_session(src, out_dir, build_steps(tasks, args.rounds, args.rest_between, 0),
+                            expect=args.expect, lead=5)
+        _play_runs(src, out_dir, "kovaaks", args.runs, args.duration, "play", obs, False, args.stats_dir,
+                   numbered=True)
+    finally:
+        src.close()
+    print(f"\n保存先: {out_dir}")
+
+
 def cmd_events_plot(args):
     from .events import Events, plot_events, print_summary, summarize
     ev = Events.load(Path(args.file))
@@ -288,6 +350,17 @@ def main(argv=None):
     ep.add_argument("--out", help="画像に保存する場合のパス")
     ep.set_defaults(func=cmd_events_plot)
 
+    py = sub.add_parser("play")
+    py.add_argument("--duration", type=float, default=90.0, help="記録の長さ [s]（KovaaK's の 1 回 60 秒 + 前後）")
+    py.add_argument("--session", help="既定は data/raw/<今日の日付>")
+    py.add_argument("--name", help="ファイル名（既定は play_<時刻>。.npz と .csv が同じ名前でできる）")
+    py.add_argument("--task", default="play", help="記録のラベル")
+    py.add_argument("--runs", type=int, default=1, help="続けて何回取るか（2 回以上なら <name>_01, _02, … になり、回ごとに Enter を待つ）")
+    py.add_argument("--obs", action="store_true", help="OBS で画面録画も一緒に取る（OBS を起動し、WebSocket サーバーを有効にしておく）")
+    py.add_argument("--no-kovaaks", action="store_true", help="記録のあとに KovaaK's の結果を取り込まない")
+    py.add_argument("--stats-dir", help="KovaaK's の stats フォルダ（既定は Steam の置き場所を探す）")
+    py.set_defaults(func=cmd_play)
+
     kv = sub.add_parser("kovaaks")
     kv.add_argument("file", help="events で保存した .csv")
     kv.add_argument("--stats-dir", help="KovaaK's の stats フォルダ（既定は Steam の置き場所を探す）")
@@ -308,6 +381,20 @@ def main(argv=None):
     lb.add_argument("--long", type=float, default=180.0, help="長い記録の長さ [s]")
     lb.add_argument("--solo", action="store_true", help="手首を一人用（天板の裏を押し上げる）で取る。本番は押さえてもらう")
     lb.set_defaults(func=cmd_lab)
+
+    vs = sub.add_parser("visit", help="1 回の来室：lab の手順 → KovaaK's を --runs 回（画面録画つき）")
+    vs.add_argument("--session", help="既定は data/raw/<今日の日付>")
+    vs.add_argument("--runs", type=int, default=5, help="KovaaK's を何回遊ぶか")
+    vs.add_argument("--duration", type=float, default=90.0, help="KovaaK's 1 回ぶんの記録の長さ [s]")
+    vs.add_argument("--expect", type=int, default=6, help="付けたセンサの本数（足りなければ警告）")
+    vs.add_argument("--rounds", type=int, default=2, help="MVC の課題を何周するか")
+    vs.add_argument("--rest-between", type=float, default=10.0, help="試行のあいだの休憩 [s]")
+    vs.add_argument("--wrist-only", action="store_true", help="MVC を手首の 2 課題だけにする")
+    vs.add_argument("--solo", action="store_true", help="手首を一人用で取る")
+    vs.add_argument("--skip-lab", action="store_true", help="MVC までを飛ばして KovaaK's から始める（途中で止まったとき）")
+    vs.add_argument("--no-obs", action="store_true", help="画面録画をしない")
+    vs.add_argument("--stats-dir", help="KovaaK's の stats フォルダ（既定は Steam の置き場所を探す）")
+    vs.set_defaults(func=cmd_visit)
 
     args = p.parse_args(argv)
     args.func(args)

@@ -3,3 +3,5 @@ scipy
 matplotlib
 # 実機（Delsys API）を使うときだけ必要
 pythonnet
+# 画面録画を一緒に取るとき（play --obs）だけ必要
+obsws-python

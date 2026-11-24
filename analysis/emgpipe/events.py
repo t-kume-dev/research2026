@@ -14,6 +14,7 @@ import csv
 import ctypes
 import json
 import sys
+import threading
 import time
 from ctypes import wintypes
 from dataclasses import dataclass
@@ -141,8 +142,13 @@ PM_REMOVE = 0x0001
 QS_ALLINPUT = 0x04FF
 
 
-def record_events(duration: float, progress: bool = True) -> Events:
-    """duration 秒ぶん、マウスのイベントを記録する。Ctrl+C で早めに止められる。"""
+def record_events(duration: float, progress: bool = True, stop: "threading.Event | None" = None,
+                  ready: "threading.Event | None" = None) -> Events:
+    """duration 秒ぶん、マウスのイベントを記録する。Ctrl+C で早めに止められる。
+
+    筋電と同時に取るとき（play）は別スレッドで動かす。stop が立ったら止まり、
+    ready は受け取りの準備（Raw Input の登録）ができたら立てる。ウィンドウは呼んだスレッドで作る。
+    """
     if sys.platform != "win32":
         raise RuntimeError("マウスの記録は Windows だけで動きます")
     user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -165,6 +171,8 @@ def record_events(duration: float, progress: bool = True) -> Events:
     dev = RAWINPUTDEVICE(0x01, 0x02, RIDEV_INPUTSINK, hwnd)  # Generic Desktop / Mouse
     if not user32.RegisterRawInputDevices(ctypes.byref(dev), 1, ctypes.sizeof(dev)):
         raise OSError(ctypes.get_last_error(), "Raw Input を登録できませんでした")
+    if ready is not None:
+        ready.set()
 
     t_list: list[float] = []
     dx_l: list[int] = []
@@ -184,7 +192,7 @@ def record_events(duration: float, progress: bool = True) -> Events:
     t0_wall = time.time()  # KovaaK's などの壁時計の時刻と合わせるため、同じ瞬間の値を残す
     last_print = -1
     try:
-        while (now := time.perf_counter() - t0) < duration:
+        while (now := time.perf_counter() - t0) < duration and not (stop is not None and stop.is_set()):
             user32.MsgWaitForMultipleObjects(0, None, False, 50, QS_ALLINPUT)
             while user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, PM_REMOVE):
                 if msg.message != WM_INPUT:
@@ -231,7 +239,7 @@ def record_events(duration: float, progress: bool = True) -> Events:
         if progress:
             print()
 
-    meta = {"started": started, "duration_s": duration, "clock": "time.perf_counter",
+    meta = {"started": started, "duration_s": round(time.perf_counter() - t0, 3), "clock": "time.perf_counter",
             "t0_perf_counter": t0, "t0_unix": t0_wall,
             "t0_local": datetime.fromtimestamp(t0_wall).isoformat(timespec="milliseconds"),
             "absolute": absolute,
